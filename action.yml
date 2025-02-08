@@ -1,0 +1,6 @@
+name: "IaC Cost Estimator"
+description: "Estimates the cost of changes made in infrastructure-as-code (IaC)"
+
+runs:
+    using: "node20"
+    main: "dist/index.js"
