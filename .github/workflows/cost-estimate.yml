@@ -4,6 +4,10 @@ on:
     pull_request:
         types: [opened, synchronize, reopened]
 
+permissions:
+    pull-requests: write
+    contents: read
+
 jobs:
     estimate-cost:
         runs-on: ubuntu-latest
