@@ -1,0 +1,22 @@
+{
+    "name": "infra-stuff",
+    "version": "1.0.0",
+    "description": "",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "ncc build index.ts --license licenses.txt"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@actions/core": "^1.11.1",
+        "@actions/exec": "^1.1.1",
+        "@actions/github": "^6.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.13.1",
+        "@vercel/ncc": "^0.38.3",
+        "typescript": "^5.7.3"
+    }
+}
