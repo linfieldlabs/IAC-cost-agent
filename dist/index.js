@@ -35747,80 +35747,85 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports["default"] = run;
+exports.generateCostReport = generateCostReport;
 const exec_1 = __nccwpck_require__(5236);
 const github_1 = __nccwpck_require__(3228);
 const core = __importStar(__nccwpck_require__(7484));
-const openai_1 = __importDefault(__nccwpck_require__(2583));
-// todo
-// variable cost scenarios should depend on the type of resource
-function analyzeTerraformFile(openai, filePath) {
+const openai_service_1 = __nccwpck_require__(5375);
+const path = __importStar(__nccwpck_require__(6928));
+const fs = __importStar(__nccwpck_require__(9896));
+function findTerraformDirectories() {
     return __awaiter(this, void 0, void 0, function* () {
-        let fileContent = "";
-        yield (0, exec_1.exec)("git", ["show", `:${filePath}`], {
+        let tfFiles = "";
+        const baseRef = process.env.GITHUB_BASE_REF || "main";
+        yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
+        yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
             listeners: {
                 stdout: (data) => {
-                    fileContent += data.toString();
+                    tfFiles += data.toString();
                 },
             },
         });
-        const prompt = `Analyze the following Terraform configuration and provide a cost estimation report following these requirements:
-
-1. Identify all AWS resources and their configurations
-2. Calculate estimated costs for:
-   - Base Cost (fixed monthly charges)
-   - Variable Cost scenarios:
-     * Low Usage (10k requests/month, 5GB storage, 1GB egress)
-     * Medium Usage (100k requests/month, 20GB storage, 5GB egress)
-     * High Usage (1M requests/month, 100GB storage, 50GB egress)
-3. List all service changes (added, modified, or removed resources)
-4. Format the response as a structured JSON with the following fields:
-   - baseCost
-   - variableCosts: { low, medium, high }
-   - serviceChanges: string[]
-   - detailedCosts: Array of service-specific costs
-
-Do not include any other text or comments in your response.
-
-Here's the Terraform configuration:
-
-${fileContent}`;
-        const response = yield openai.chat.completions.create({
-            model: "gpt-4",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
+        const directories = new Set();
+        tfFiles
+            .split("\n")
+            .filter((file) => file.endsWith(".tf"))
+            .forEach((file) => {
+            directories.add(path.dirname(file));
         });
-        console.log("Response:", response.choices[0].message.content);
-        return response.choices[0].message.content || "";
+        return Array.from(directories);
+    });
+}
+function generateTerraformPlan(directory) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const planFile = path.join(directory, "tfplan.json");
+        // Initialize terraform in the directory
+        yield (0, exec_1.exec)("terraform", ["init"], { cwd: directory });
+        // Generate plan and save it to a file
+        yield (0, exec_1.exec)("terraform", ["plan", "-out=tfplan"], { cwd: directory });
+        // Convert plan to JSON
+        let planContent = "";
+        yield (0, exec_1.exec)("terraform", ["show", "-json", "tfplan"], {
+            cwd: directory,
+            listeners: {
+                stdout: (data) => {
+                    planContent += data.toString();
+                },
+            },
+        });
+        // Clean up
+        fs.unlinkSync(path.join(directory, "tfplan"));
+        return planContent;
+    });
+}
+function analyzeTerraformPlan(openaiService, planContent, directory) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return openaiService.analyzeTerraformPlan(planContent);
     });
 }
 function run(githubToken, openaiApiKey, repo, owner, prNumber) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const octokit = (0, github_1.getOctokit)(githubToken);
-            const openai = new openai_1.default({ apiKey: openaiApiKey });
-            let tfFiles = "";
-            const baseRef = process.env.GITHUB_BASE_REF || "main";
-            yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
-            yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
-                listeners: {
-                    stdout: (data) => {
-                        tfFiles += data.toString();
-                    },
-                },
-            });
-            const terraformFiles = tfFiles
-                .split("\n")
-                .filter((file) => file.endsWith(".tf"))
-                .filter(Boolean); // Remove empty strings
-            console.log("Found Terraform files:");
-            terraformFiles.forEach((file) => console.log(file));
-            const analyses = yield Promise.all(terraformFiles.map((file) => analyzeTerraformFile(openai, file)));
-            const comment = generateCostReport(terraformFiles, analyses);
+            const openaiService = new openai_service_1.OpenAIService(openaiApiKey);
+            // Find all directories containing Terraform files
+            const terraformDirs = yield findTerraformDirectories();
+            console.log("Found Terraform directories:");
+            terraformDirs.forEach((dir) => console.log(dir));
+            const analyses = yield Promise.all(terraformDirs.map((dir) => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const planContent = yield generateTerraformPlan(dir);
+                    return yield analyzeTerraformPlan(openaiService, planContent, dir);
+                }
+                catch (error) {
+                    console.error(`Failed to analyze directory ${dir}:`, error);
+                    return null;
+                }
+            })));
+            const validAnalyses = analyses.filter((analysis) => analysis !== null);
+            const comment = generateCostReport(terraformDirs, validAnalyses);
             yield octokit.rest.issues.createComment({
                 owner,
                 repo,
@@ -35838,6 +35843,10 @@ function generateCostReport(files, analyses) {
     let totalVariableCosts = { low: 0, medium: 0, high: 0 };
     const allServiceChanges = [];
     const detailedCosts = [];
+    const notes = [];
+    const lowAssumptions = [];
+    const mediumAssumptions = [];
+    const highAssumptions = [];
     // Parse and combine all analyses
     analyses.forEach((analysis, index) => {
         try {
@@ -35848,6 +35857,10 @@ function generateCostReport(files, analyses) {
             totalVariableCosts.high += data.variableCosts.high;
             allServiceChanges.push(...data.serviceChanges);
             detailedCosts.push(...data.detailedCosts);
+            notes.push(...data.notes);
+            lowAssumptions.push(...data.low_assumptions);
+            mediumAssumptions.push(...data.medium_assumptions);
+            highAssumptions.push(...data.high_assumptions);
         }
         catch (e) {
             console.error(`Failed to parse analysis for ${files[index]}:`, e);
@@ -35859,9 +35872,9 @@ function generateCostReport(files, analyses) {
 - **Base Cost**: $${totalBaseCost.toFixed(2)}
 
 - **Variable Cost**:
-  - **Low Usage**: $${totalVariableCosts.low.toFixed(2)} – (Assumes 10k req/month, 5GB storage, 1GB egress)
-  - **Medium Usage**: $${totalVariableCosts.medium.toFixed(2)} – (Assumes 100k req/month, 20GB storage, 5GB egress)
-  - **High Usage**: $${totalVariableCosts.high.toFixed(2)} – (Assumes 1M req/month, 100GB storage, 50GB egress)
+  - **Low Usage**: $${totalVariableCosts.low.toFixed(2)}
+  - **Medium Usage**: $${totalVariableCosts.medium.toFixed(2)}
+  - **High Usage**: $${totalVariableCosts.high.toFixed(2)}
 
 **Service Changes**:
 ${allServiceChanges.map((change) => `- ${change}`).join("\n")}
@@ -35869,13 +35882,19 @@ ${allServiceChanges.map((change) => `- ${change}`).join("\n")}
 ### Cost Summary
 ${generateCostTable(detailedCosts)}
 
-> **Note**:
-> - **Base Cost** is the fixed monthly charge for provisioning a resource (e.g., hosting fees).
-> - **Variable Costs** depend on usage. The assumptions for usage scenarios are:
->     - **Low Usage**: ~10,000 requests/month, 5GB storage, 1GB egress
->     - **Medium Usage**: ~100,000 requests/month, 20GB storage, 5GB egress
->     - **High Usage**: ~1,000,000 requests/month, 100GB storage, 50GB egress
-> - Values in parentheses indicate the net change (Δ) compared to the previous configuration.
+**Assumptions**:
+- **Low Usage**: ${lowAssumptions
+        .map((assumption) => `- ${assumption}`)
+        .join("\n")}
+- **Medium Usage**: ${mediumAssumptions
+        .map((assumption) => `- ${assumption}`)
+        .join("\n")}
+- **High Usage**: ${highAssumptions
+        .map((assumption) => `- ${assumption}`)
+        .join("\n")}
+
+**Notes**:
+${notes.map((note) => `- ${note}`).join("\n")}
 
 **Disclaimer**: ⚠️  
 These cost estimates are indicative only. Actual costs may vary due to regional pricing differences, varying usage patterns, and changes in AWS pricing. This tool is designed to provide a general guideline for the cost impact of IaC changes and should not be used as the sole basis for financial or operational decisions.`;
@@ -35889,11 +35908,11 @@ function generateCostTable(detailedCosts) {
         "**High Usage**",
     ];
     const rows = detailedCosts.map((cost) => [
-        cost.service,
-        `$${cost.baseCost.toFixed(2)} (${formatDelta(cost.baseCostDelta)})`,
-        `$${cost.lowUsage.toFixed(2)} (${formatDelta(cost.lowUsageDelta)})`,
-        `$${cost.mediumUsage.toFixed(2)} (${formatDelta(cost.mediumUsageDelta)})`,
-        `$${cost.highUsage.toFixed(2)} (${formatDelta(cost.highUsageDelta)})`,
+        cost.resourceName,
+        `$${cost.baseCostEstimate.toFixed(2)} (${formatDelta(cost.baseCostEstimate)})`,
+        `$${cost.variableCostEstimate.low.toFixed(2)} (${formatDelta(cost.variableCostEstimate.low)})`,
+        `$${cost.variableCostEstimate.medium.toFixed(2)} (${formatDelta(cost.variableCostEstimate.medium)})`,
+        `$${cost.variableCostEstimate.high.toFixed(2)} (${formatDelta(cost.variableCostEstimate.high)})`,
     ]);
     return `| ${headers.join(" | ")} |\n| ${headers
         .map(() => "---")
@@ -35908,6 +35927,129 @@ function formatDelta(delta) {
         ? `+$${delta.toFixed(2)}`
         : `-$${Math.abs(delta).toFixed(2)}`;
 }
+
+
+/***/ }),
+
+/***/ 5375:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OpenAIService = void 0;
+const openai_1 = __importDefault(__nccwpck_require__(2583));
+class OpenAIService {
+    constructor(apiKey) {
+        this.openai = new openai_1.default({ apiKey });
+    }
+    analyzeTerraformConfig(fileContent) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const prompt = `
+
+        Analyze the following Terraform configuration and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
+
+1. Identify all AWS resources and their configurations.
+2. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS pricing. If exact prices are unknown, provide an estimated guess.
+3. Calculate estimated costs for:
+   - Base Cost (fixed monthly charges)
+   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
+     * Low Usage (minimal expected usage)
+     * Medium Usage (moderate expected usage)
+     * High Usage (heavy expected usage)
+4. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+
+Format the response as a structured JSON with the following fields:
+ {
+   baseCost: number // estimated fixed monthly cost
+    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
+    serviceChanges: string[] // list of changes such as added, modified, or removed resources
+    detailedCosts: {
+        resourceName: string // name of the resource
+        resourceType: string // type of the resource
+        baseCostEstimate: number // estimated fixed monthly cost for the resource
+        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
+    }[],
+    notes: string[] // list of notes about the cost estimation
+    low_assumptions: string[] // list of assumptions for the low usage scenario
+    medium_assumptions: string[] // list of assumptions for the medium usage scenario
+    high_assumptions: string[] // list of assumptions for the high usage scenario
+ }
+
+Do not include any other text or comments in your response. Response should be json only.
+
+
+Here's the Terraform configuration:
+
+${fileContent}`;
+            const response = yield this.openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7,
+            });
+            return response.choices[0].message.content || "";
+        });
+    }
+    analyzeTerraformPlan(planContent) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const prompt = `
+        Analyze the following Terraform plan JSON output and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
+
+1. Examine the planned changes in the Terraform plan JSON.
+2. Identify all AWS resources that will be added, modified, or deleted.
+3. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS pricing. If exact prices are unknown, provide an estimated guess.
+4. Calculate estimated costs for:
+   - Base Cost (fixed monthly charges)
+   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
+     * Low Usage (minimal expected usage)
+     * Medium Usage (moderate expected usage)
+     * High Usage (heavy expected usage)
+5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+
+Format the response as a structured JSON with the following fields:
+ {
+   baseCost: number // estimated fixed monthly cost
+    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
+    serviceChanges: string[] // list of changes such as added, modified, or removed resources
+    detailedCosts: {
+        resourceName: string // name of the resource
+        resourceType: string // type of the resource
+        baseCostEstimate: number // estimated fixed monthly cost for the resource
+        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
+    }[],
+    notes: string[] // list of notes about the cost estimation
+    low_assumptions: string[] // list of assumptions for the low usage scenario
+    medium_assumptions: string[] // list of assumptions for the medium usage scenario
+    high_assumptions: string[] // list of assumptions for the high usage scenario
+ }
+
+Do not include any other text or comments in your response. Response should be json only.
+
+Here's the Terraform plan JSON:
+
+${planContent}`;
+            const response = yield this.openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7,
+            });
+            return response.choices[0].message.content || "";
+        });
+    }
+}
+exports.OpenAIService = OpenAIService;
 
 
 /***/ }),
