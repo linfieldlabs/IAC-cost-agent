@@ -23,6 +23,11 @@ jobs:
                   node-version: "20"
                   cache: "npm"
 
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                  terraform_version: "1.10.5"
+
             - name: Run Cost Estimation
               uses: ./
               env:
