@@ -2,6 +2,8 @@ import { exec } from "@actions/exec"
 import { getOctokit } from "@actions/github"
 import * as core from "@actions/core"
 import { OpenAIService } from "../services/openai-service"
+import * as path from "path"
+import * as fs from "fs"
 
 export interface EstimatorResponse {
     baseCost: number // estimated fixed monthly cost
@@ -19,20 +21,61 @@ export interface EstimatorResponse {
     high_assumptions: string[] // list of assumptions for the high usage scenario
 }
 
-async function analyzeTerraformFile(
-    openaiService: OpenAIService,
-    filePath: string
-): Promise<string> {
-    let fileContent = ""
-    await exec("git", ["show", `:${filePath}`], {
+async function findTerraformDirectories(): Promise<string[]> {
+    let tfFiles = ""
+    const baseRef = process.env.GITHUB_BASE_REF || "main"
+    await exec("git", ["fetch", "origin", baseRef], {})
+    await exec("git", ["diff", "--name-only", `origin/${baseRef}`], {
         listeners: {
             stdout: (data: Buffer) => {
-                fileContent += data.toString()
+                tfFiles += data.toString()
             },
         },
     })
 
-    return openaiService.analyzeTerraformConfig(fileContent)
+    const directories = new Set<string>()
+    tfFiles
+        .split("\n")
+        .filter((file) => file.endsWith(".tf"))
+        .forEach((file) => {
+            directories.add(path.dirname(file))
+        })
+
+    return Array.from(directories)
+}
+
+async function generateTerraformPlan(directory: string): Promise<string> {
+    const planFile = path.join(directory, "tfplan.json")
+
+    // Initialize terraform in the directory
+    await exec("terraform", ["init"], { cwd: directory })
+
+    // Generate plan and save it to a file
+    await exec("terraform", ["plan", "-out=tfplan"], { cwd: directory })
+
+    // Convert plan to JSON
+    let planContent = ""
+    await exec("terraform", ["show", "-json", "tfplan"], {
+        cwd: directory,
+        listeners: {
+            stdout: (data: Buffer) => {
+                planContent += data.toString()
+            },
+        },
+    })
+
+    // Clean up
+    fs.unlinkSync(path.join(directory, "tfplan"))
+
+    return planContent
+}
+
+async function analyzeTerraformPlan(
+    openaiService: OpenAIService,
+    planContent: string,
+    directory: string
+): Promise<string> {
+    return openaiService.analyzeTerraformPlan(planContent)
 }
 
 export default async function run(
@@ -46,32 +89,32 @@ export default async function run(
         const octokit = getOctokit(githubToken)
         const openaiService = new OpenAIService(openaiApiKey)
 
-        let tfFiles = ""
-        const baseRef = process.env.GITHUB_BASE_REF || "main"
-        await exec("git", ["fetch", "origin", baseRef], {})
-        await exec("git", ["diff", "--name-only", `origin/${baseRef}`], {
-            listeners: {
-                stdout: (data: Buffer) => {
-                    tfFiles += data.toString()
-                },
-            },
-        })
+        // Find all directories containing Terraform files
+        const terraformDirs = await findTerraformDirectories()
 
-        const terraformFiles = tfFiles
-            .split("\n")
-            .filter((file) => file.endsWith(".tf"))
-            .filter(Boolean) // Remove empty strings
-
-        console.log("Found Terraform files:")
-        terraformFiles.forEach((file) => console.log(file))
+        console.log("Found Terraform directories:")
+        terraformDirs.forEach((dir) => console.log(dir))
 
         const analyses = await Promise.all(
-            terraformFiles.map((file) =>
-                analyzeTerraformFile(openaiService, file)
-            )
+            terraformDirs.map(async (dir) => {
+                try {
+                    const planContent = await generateTerraformPlan(dir)
+                    return await analyzeTerraformPlan(
+                        openaiService,
+                        planContent,
+                        dir
+                    )
+                } catch (error) {
+                    console.error(`Failed to analyze directory ${dir}:`, error)
+                    return null
+                }
+            })
         )
 
-        const comment = generateCostReport(terraformFiles, analyses)
+        const validAnalyses = analyses.filter(
+            (analysis): analysis is string => analysis !== null
+        )
+        const comment = generateCostReport(terraformDirs, validAnalyses)
 
         await octokit.rest.issues.createComment({
             owner,
