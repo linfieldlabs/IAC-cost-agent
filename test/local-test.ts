@@ -3,6 +3,8 @@ import * as fs from "fs"
 import * as path from "path"
 import { generateCostReport } from "../scripts/terraform-estimator"
 import * as dotenv from "dotenv"
+import { exec } from "child_process"
+import { promisify } from "util"
 
 async function runLocalTest() {
     dotenv.config()
@@ -17,28 +19,34 @@ async function runLocalTest() {
 
     const openaiService = new OpenAIService(openaiApiKey)
 
-    // Read test Terraform files
+    // Generate and analyze Terraform plan
     const testDataDir = path.join(__dirname, "data")
-    const files = fs
-        .readdirSync(testDataDir)
-        .filter((file) => file.endsWith(".tf"))
+    console.log("Test data directory:", testDataDir)
 
-    console.log("Analyzing Terraform files:", files)
+    // Initialize and generate plan
+    await exec(`terraform init`, { cwd: testDataDir })
+    await exec(`terraform plan -out=tfplan`, { cwd: testDataDir })
 
-    const analyses = await Promise.all(
-        files.map(async (file) => {
-            const filePath = path.join(testDataDir, file)
-            const content = fs.readFileSync(filePath, "utf-8")
-            const response = await openaiService.analyzeTerraformConfig(content)
-            console.log("Response:", response)
-            return response
-        })
-    )
+    // Convert plan to JSON
+    let planContent = ""
+    const execPromise = promisify(exec)
+    const { stdout } = await execPromise(`terraform show -json tfplan`, {
+        cwd: testDataDir,
+        encoding: "utf8",
+    })
+    planContent = stdout
+
+    // Analyze the plan
+    const analysis = await openaiService.analyzeTerraformPlan(planContent)
+    console.log("Response:", analysis)
 
     // Generate the report
-    const report = generateCostReport(files, analyses)
+    const report = generateCostReport([testDataDir], [analysis])
     console.log("\nGenerated Cost Report:")
     console.log(report)
+
+    // Clean up
+    fs.unlinkSync(path.join(testDataDir, "tfplan"))
 }
 
 runLocalTest().catch(console.error)

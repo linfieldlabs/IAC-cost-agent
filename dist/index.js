@@ -35780,7 +35780,6 @@ function findTerraformDirectories() {
 }
 function generateTerraformPlan(directory) {
     return __awaiter(this, void 0, void 0, function* () {
-        const planFile = path.join(directory, "tfplan.json");
         // Initialize terraform in the directory
         yield (0, exec_1.exec)("terraform", ["init"], { cwd: directory });
         // Generate plan and save it to a file
@@ -36045,6 +36044,7 @@ ${planContent}`;
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.7,
             });
+            console.log("Response:", response.choices[0].message.content);
             return response.choices[0].message.content || "";
         });
     }
