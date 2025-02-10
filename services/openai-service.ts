@@ -99,6 +99,8 @@ ${planContent}`
             temperature: 0.7,
         })
 
+        console.log("Response:", response.choices[0].message.content)
+
         return response.choices[0].message.content || ""
     }
 }

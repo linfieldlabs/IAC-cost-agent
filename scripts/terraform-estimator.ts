@@ -45,8 +45,6 @@ async function findTerraformDirectories(): Promise<string[]> {
 }
 
 async function generateTerraformPlan(directory: string): Promise<string> {
-    const planFile = path.join(directory, "tfplan.json")
-
     // Initialize terraform in the directory
     await exec("terraform", ["init"], { cwd: directory })
 
