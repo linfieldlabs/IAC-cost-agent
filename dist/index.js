@@ -35676,7 +35676,7 @@ var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(7484));
 const github_1 = __nccwpck_require__(3228);
-const terraform_estimator_1 = __importDefault(__nccwpck_require__(1234));
+const estimation_handler_1 = __importDefault(__nccwpck_require__(9519));
 try {
     const githubToken = process.env.GITHUB_TOKEN;
     const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -35691,7 +35691,7 @@ try {
     if (!prNumber) {
         throw new Error("Pull Request number is not found");
     }
-    (0, terraform_estimator_1.default)(githubToken, openaiApiKey, repo, owner, prNumber);
+    (0, estimation_handler_1.default)(githubToken, openaiApiKey, repo, owner, prNumber);
 }
 catch (error) {
     core.setFailed(error.message);
@@ -35700,7 +35700,7 @@ catch (error) {
 
 /***/ }),
 
-/***/ 1234:
+/***/ 9519:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -35747,97 +35747,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports["default"] = run;
 exports.generateCostReport = generateCostReport;
-const exec_1 = __nccwpck_require__(5236);
+exports.generateCostTable = generateCostTable;
+exports["default"] = run;
 const github_1 = __nccwpck_require__(3228);
 const core = __importStar(__nccwpck_require__(7484));
-const openai_service_1 = __nccwpck_require__(5375);
-const path = __importStar(__nccwpck_require__(6928));
-const fs = __importStar(__nccwpck_require__(9896));
-function findTerraformDirectories() {
-    return __awaiter(this, void 0, void 0, function* () {
-        let tfFiles = "";
-        const baseRef = process.env.GITHUB_BASE_REF || "main";
-        yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
-        yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
-            listeners: {
-                stdout: (data) => {
-                    tfFiles += data.toString();
-                },
-            },
-        });
-        const directories = new Set();
-        tfFiles
-            .split("\n")
-            .filter((file) => file.endsWith(".tf"))
-            .forEach((file) => {
-            directories.add(path.dirname(file));
-        });
-        return Array.from(directories);
-    });
-}
-function generateTerraformPlan(directory) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Initialize terraform in the directory
-        yield (0, exec_1.exec)("terraform", ["init"], { cwd: directory });
-        // Generate plan and save it to a file
-        yield (0, exec_1.exec)("terraform", ["plan", "-out=tfplan"], { cwd: directory });
-        // Convert plan to JSON
-        let planContent = "";
-        yield (0, exec_1.exec)("terraform", ["show", "-json", "tfplan"], {
-            cwd: directory,
-            listeners: {
-                stdout: (data) => {
-                    planContent += data.toString();
-                },
-            },
-        });
-        // Clean up
-        fs.unlinkSync(path.join(directory, "tfplan"));
-        return planContent;
-    });
-}
-function analyzeTerraformPlan(openaiService, planContent, directory) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return openaiService.analyzeTerraformPlan(planContent);
-    });
-}
-function run(githubToken, openaiApiKey, repo, owner, prNumber) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const octokit = (0, github_1.getOctokit)(githubToken);
-            const openaiService = new openai_service_1.OpenAIService(openaiApiKey);
-            // Find all directories containing Terraform files
-            const terraformDirs = yield findTerraformDirectories();
-            console.log("Found Terraform directories:");
-            terraformDirs.forEach((dir) => console.log(dir));
-            const analyses = yield Promise.all(terraformDirs.map((dir) => __awaiter(this, void 0, void 0, function* () {
-                try {
-                    const planContent = yield generateTerraformPlan(dir);
-                    return yield analyzeTerraformPlan(openaiService, planContent, dir);
-                }
-                catch (error) {
-                    console.error(`Failed to analyze directory ${dir}:`, error);
-                    return null;
-                }
-            })));
-            const validAnalyses = analyses.filter((analysis) => analysis !== null);
-            const comment = generateCostReport(terraformDirs, validAnalyses);
-            yield octokit.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: prNumber,
-                body: comment,
-            });
-        }
-        catch (error) {
-            core.setFailed(`Action failed: ${error}`);
-        }
-    });
-}
-function generateCostReport(files, analyses) {
+const terraform_estimator_1 = __importDefault(__nccwpck_require__(1234));
+function generateCostReport(analyses) {
     let totalBaseCost = 0;
     let totalVariableCosts = { low: 0, medium: 0, high: 0 };
     const allServiceChanges = [];
@@ -35862,10 +35782,10 @@ function generateCostReport(files, analyses) {
             highAssumptions.push(...data.high_assumptions);
         }
         catch (e) {
-            console.error(`Failed to parse analysis for ${files[index]}:`, e);
+            console.error(`Failed to parse analysis: `, e);
         }
     });
-    return `## Terraform Cost Estimation
+    return `## Cost Estimation
 
 **Quick Summary**:
 - **Base Cost**: $${totalBaseCost.toFixed(2)}
@@ -35925,6 +35845,159 @@ function formatDelta(delta) {
     return delta > 0
         ? `+$${delta.toFixed(2)}`
         : `-$${Math.abs(delta).toFixed(2)}`;
+}
+function run(githubToken, openaiApiKey, repo, owner, prNumber) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const octokit = (0, github_1.getOctokit)(githubToken);
+            const iacStack = core.getInput("iac-stack");
+            const iacDir = core.getInput("iac-dir");
+            if (iacStack !== "terraform") {
+                throw new Error(`IaC stack '${iacStack}' is not yet implemented. Currently only 'terraform' is supported.`);
+            }
+            let analyses = yield (0, terraform_estimator_1.default)(iacDir, openaiApiKey);
+            const comment = generateCostReport(analyses);
+            yield octokit.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: comment,
+            });
+        }
+        catch (error) {
+            core.setFailed(`Action failed: ${error}`);
+        }
+    });
+}
+
+
+/***/ }),
+
+/***/ 1234:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports["default"] = runTerraformEstimator;
+const exec_1 = __nccwpck_require__(5236);
+const openai_service_1 = __nccwpck_require__(5375);
+const path = __importStar(__nccwpck_require__(6928));
+const fs = __importStar(__nccwpck_require__(9896));
+function findTerraformDirectories() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let tfFiles = "";
+        const baseRef = process.env.GITHUB_BASE_REF || "main";
+        yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
+        yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
+            listeners: {
+                stdout: (data) => {
+                    tfFiles += data.toString();
+                },
+            },
+        });
+        const directories = new Set();
+        tfFiles
+            .split("\n")
+            .filter((file) => file.endsWith(".tf"))
+            .forEach((file) => {
+            directories.add(path.dirname(file));
+        });
+        return Array.from(directories);
+    });
+}
+function generateTerraformPlan(directory) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Initialize terraform in the directory
+        yield (0, exec_1.exec)("terraform", ["init"], { cwd: directory });
+        // Generate plan and save it to a file
+        yield (0, exec_1.exec)("terraform", ["plan", "-out=tfplan"], { cwd: directory });
+        // Convert plan to JSON
+        let planContent = "";
+        yield (0, exec_1.exec)("terraform", ["show", "-json", "tfplan"], {
+            cwd: directory,
+            listeners: {
+                stdout: (data) => {
+                    planContent += data.toString();
+                },
+            },
+        });
+        // Clean up
+        fs.unlinkSync(path.join(directory, "tfplan"));
+        return planContent;
+    });
+}
+function analyzeTerraformPlan(openaiService, planContent, directory) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return openaiService.analyzeTerraformPlan(planContent);
+    });
+}
+function runTerraformEstimator(iacDir, openaiApiKey) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const openaiService = new openai_service_1.OpenAIService(openaiApiKey);
+        let terraformDirs;
+        if (iacDir !== "") {
+            terraformDirs = [iacDir];
+        }
+        else {
+            terraformDirs = yield findTerraformDirectories();
+        }
+        console.log("Found Terraform directories:");
+        terraformDirs.forEach((dir) => console.log(dir));
+        const analyses = yield Promise.all(terraformDirs.map((dir) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const planContent = yield generateTerraformPlan(dir);
+                return yield analyzeTerraformPlan(openaiService, planContent, dir);
+            }
+            catch (error) {
+                console.error(`Failed to analyze directory ${dir}:`, error);
+                return null;
+            }
+        })));
+        return analyses.filter((analysis) => analysis !== null);
+    });
 }
 
 

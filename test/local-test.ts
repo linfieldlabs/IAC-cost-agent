@@ -1,7 +1,7 @@
 import { OpenAIService } from "../services/openai-service"
 import * as fs from "fs"
 import * as path from "path"
-import { generateCostReport } from "../scripts/terraform-estimator"
+import { generateCostReport } from "../scripts/estimation-handler"
 import * as dotenv from "dotenv"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -41,7 +41,7 @@ async function runLocalTest() {
     console.log("Response:", analysis)
 
     // Generate the report
-    const report = generateCostReport([testDataDir], [analysis])
+    const report = generateCostReport([analysis])
     console.log("\nGenerated Cost Report:")
     console.log(report)
 
