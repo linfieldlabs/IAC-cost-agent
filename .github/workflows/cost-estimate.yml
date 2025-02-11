@@ -30,6 +30,9 @@ jobs:
 
             - name: Run Cost Estimation
               uses: ./
+              with:
+                  iac-stack: ${{ inputs.iac-stack || 'terraform' }}
+                  iac-dir: ${{ inputs.iac-dir || '' }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -87,8 +87,21 @@ export default async function run(
         const octokit = getOctokit(githubToken)
         const openaiService = new OpenAIService(openaiApiKey)
 
-        // Find all directories containing Terraform files
-        const terraformDirs = await findTerraformDirectories()
+        const iacStack = core.getInput("iac-stack")
+        const iacDir = core.getInput("iac-dir")
+
+        if (iacStack !== "terraform") {
+            throw new Error(
+                `IaC stack '${iacStack}' is not yet implemented. Currently only 'terraform' is supported.`
+            )
+        }
+
+        let terraformDirs: string[]
+        if (iacDir !== "") {
+            terraformDirs = [iacDir]
+        } else {
+            terraformDirs = await findTerraformDirectories()
+        }
 
         console.log("Found Terraform directories:")
         terraformDirs.forEach((dir) => console.log(dir))
