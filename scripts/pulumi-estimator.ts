@@ -29,13 +29,27 @@ async function findPulumiDirectories(): Promise<string[]> {
 }
 
 async function generatePulumiPreview(directory: string): Promise<string> {
-    // Initialize pulumi in the directory if needed
-    await exec("pulumi", ["login", "--local"], { cwd: directory })
+    const options = {
+        cwd: directory,
+        env: {
+            ...process.env,
+            PULUMI_CONFIG_PASSPHRASE: "dummy-passphrase",
+        },
+    }
 
-    // Generate preview and capture the output
+    await exec("npm", ["install"], options)
+
+    await exec("pulumi", ["login", "--local"], options)
+
+    await exec("pulumi", ["stack", "select", "dev"], options).catch(
+        async () => {
+            await exec("pulumi", ["stack", "init", "dev"], options)
+        }
+    )
+
     let previewContent = ""
     await exec("pulumi", ["preview", "--json"], {
-        cwd: directory,
+        ...options,
         listeners: {
             stdout: (data: Buffer) => {
                 previewContent += data.toString()

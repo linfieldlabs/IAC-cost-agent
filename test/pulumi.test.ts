@@ -1,7 +1,6 @@
 import runPulumiEstimator from "../scripts/pulumi-estimator"
 import dotenv from "dotenv"
 import path from "path"
-import fs from "fs"
 
 dotenv.config()
 
@@ -26,17 +25,13 @@ describe("Pulumi Estimator Tests", () => {
     })
 
     it("should analyze a Pulumi preview", async () => {
-        // Run the estimator
         const analyses = await runPulumiEstimator(testPulumiDir, openaiApiKey)
 
-        // Verify the results
         expect(analyses).toBeInstanceOf(Array)
         expect(analyses.length).toBeGreaterThan(0)
 
-        // Parse the first analysis result
         const result = JSON.parse(analyses[0])
 
-        // Verify the structure of the response
         expect(result).toHaveProperty("baseCost")
         expect(result).toHaveProperty("variableCosts")
         expect(result.variableCosts).toEqual(
@@ -53,7 +48,6 @@ describe("Pulumi Estimator Tests", () => {
         expect(result).toHaveProperty("medium_assumptions")
         expect(result).toHaveProperty("high_assumptions")
 
-        // Verify that detailedCosts contains the expected resources
         expect(result.detailedCosts).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
@@ -68,5 +62,5 @@ describe("Pulumi Estimator Tests", () => {
                 }),
             ])
         )
-    }, 10000) // Increase timeout for OpenAI API calls
+    }, 1000000)
 })
