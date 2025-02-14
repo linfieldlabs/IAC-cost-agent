@@ -27,13 +27,10 @@ async function findTerraformDirectories(): Promise<string[]> {
 }
 
 async function generateTerraformPlan(directory: string): Promise<string> {
-    // Initialize terraform in the directory
     await exec("terraform", ["init"], { cwd: directory })
 
-    // Generate plan and save it to a file
     await exec("terraform", ["plan", "-out=tfplan"], { cwd: directory })
 
-    // Convert plan to JSON
     let planContent = ""
     await exec("terraform", ["show", "-json", "tfplan"], {
         cwd: directory,
@@ -44,7 +41,6 @@ async function generateTerraformPlan(directory: string): Promise<string> {
         },
     })
 
-    // Clean up
     fs.unlinkSync(path.join(directory, "tfplan"))
 
     return planContent

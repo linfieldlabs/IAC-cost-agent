@@ -1,6 +1,7 @@
 import { getOctokit } from "@actions/github"
 import * as core from "@actions/core"
 import runTerraformEstimator from "./terraform-estimator"
+import runPulumiEstimator from "./pulumi-estimator"
 
 export interface EstimatorResponse {
     baseCost: number // estimated fixed monthly cost
@@ -135,13 +136,19 @@ export default async function run(
         const iacStack = core.getInput("iac-stack")
         const iacDir = core.getInput("iac-dir")
 
-        if (iacStack !== "terraform") {
-            throw new Error(
-                `IaC stack '${iacStack}' is not yet implemented. Currently only 'terraform' is supported.`
-            )
+        let analyses: string[]
+        switch (iacStack.toLowerCase()) {
+            case "terraform":
+                analyses = await runTerraformEstimator(iacDir, openaiApiKey)
+                break
+            case "pulumi":
+                analyses = await runPulumiEstimator(iacDir, openaiApiKey)
+                break
+            default:
+                throw new Error(
+                    `IaC stack '${iacStack}' is not supported. Currently only 'terraform' and 'pulumi' are supported.`
+                )
         }
-
-        let analyses = await runTerraformEstimator(iacDir, openaiApiKey)
 
         const comment = generateCostReport(analyses)
 
