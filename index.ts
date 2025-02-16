@@ -1,6 +1,6 @@
 import * as core from "@actions/core"
 import { context } from "@actions/github"
-import run from "./scripts/estimation-handler"
+import run from "./src/main"
 
 try {
     const githubToken = process.env.GITHUB_TOKEN

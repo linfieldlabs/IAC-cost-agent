@@ -1,7 +1,10 @@
 import { getOctokit } from "@actions/github"
 import * as core from "@actions/core"
-import runTerraformEstimator from "./terraform-estimator"
-import runPulumiEstimator from "./pulumi-estimator"
+import { PulumiEstimator } from "./estimators/pulumiEstimator"
+import { TerraformEstimator } from "./estimators/terraformEstimator"
+import { GPT4Service } from "./services/gpt4Service"
+
+const estimators = [new TerraformEstimator(), new PulumiEstimator()]
 
 export interface EstimatorResponse {
     baseCost: number // estimated fixed monthly cost
@@ -136,18 +139,25 @@ export default async function run(
         const iacStack = core.getInput("iac-stack")
         const iacDir = core.getInput("iac-dir")
 
-        let analyses: string[]
-        switch (iacStack.toLowerCase()) {
-            case "terraform":
-                analyses = await runTerraformEstimator(iacDir, openaiApiKey)
-                break
-            case "pulumi":
-                analyses = await runPulumiEstimator(iacDir, openaiApiKey)
-                break
-            default:
-                throw new Error(
-                    `IaC stack '${iacStack}' is not supported. Currently only 'terraform' and 'pulumi' are supported.`
+        let analyses: string[] = []
+        for (const estimator of estimators) {
+            if (estimator.getIaCType() === iacStack) {
+                analyses.push(
+                    await estimator.analyze(
+                        iacDir,
+                        new GPT4Service(openaiApiKey)
+                    )
                 )
+                break
+            }
+        }
+
+        if (analyses.length === 0) {
+            throw new Error(
+                `No estimator found for IaC stack '${iacStack}'. Supported stacks are: ${estimators
+                    .map((e) => e.getIaCType())
+                    .join(", ")}.`
+            )
         }
 
         const comment = generateCostReport(analyses)
