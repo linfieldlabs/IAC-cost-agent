@@ -1,6 +1,7 @@
-import runTerraformEstimator from "../scripts/terraform-estimator"
+import { TerraformEstimator } from "../estimators/terraformEstimator"
 import dotenv from "dotenv"
 import path from "path"
+import { GPT4Service } from "../services/gpt4Service"
 
 dotenv.config({ path: path.join(__dirname, "../.env") })
 
@@ -32,9 +33,10 @@ describe("Terraform Estimator Tests", () => {
     })
 
     it("should analyze a Terraform plan", async () => {
-        const analyses = await runTerraformEstimator(
+        const estimator = new TerraformEstimator()
+        const analyses = await estimator.analyze(
             testTerraformDir,
-            openaiApiKey!
+            new GPT4Service(openaiApiKey!)
         )
 
         expect(analyses).toBeInstanceOf(Array)

@@ -6,11 +6,17 @@ export abstract class BaseEstimator {
     abstract findDirectories(): Promise<string[]>
     abstract generatePreview(directory: string): Promise<string>
 
-    async analyze(
-        previewContent: string,
-        llmService: BaseLLMService
-    ): Promise<string> {
+    async analyze(iacDir: string, llmService: BaseLLMService): Promise<string> {
+        if (!iacDir) {
+            let directories = await this.findDirectories()
+            if (directories.length === 0) {
+                throw new Error("No directories found")
+            }
+            iacDir = directories[0]
+        }
+
         try {
+            const previewContent = await this.generatePreview(iacDir)
             return await llmService.getResponse(
                 previewContent,
                 this.getIaCType()

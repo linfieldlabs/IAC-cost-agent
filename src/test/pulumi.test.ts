@@ -1,8 +1,9 @@
-import runPulumiEstimator from "../scripts/pulumi-estimator"
+import { PulumiEstimator } from "../estimators/pulumiEstimator"
 import dotenv from "dotenv"
 import path from "path"
+import { GPT4Service } from "../services/gpt4Service"
 
-dotenv.config()
+dotenv.config({ path: path.join(__dirname, "../.env") })
 
 describe("Pulumi Estimator Tests", () => {
     const openaiApiKey = process.env.OPENAI_API_KEY
@@ -25,7 +26,11 @@ describe("Pulumi Estimator Tests", () => {
     })
 
     it("should analyze a Pulumi preview", async () => {
-        const analyses = await runPulumiEstimator(testPulumiDir, openaiApiKey)
+        const estimator = new PulumiEstimator()
+        const analyses = await estimator.analyze(
+            testPulumiDir,
+            new GPT4Service(openaiApiKey)
+        )
 
         expect(analyses).toBeInstanceOf(Array)
         expect(analyses.length).toBeGreaterThan(0)
