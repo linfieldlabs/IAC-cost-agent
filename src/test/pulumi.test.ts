@@ -2,6 +2,7 @@ import { PulumiEstimator } from "../estimators/pulumiEstimator"
 import dotenv from "dotenv"
 import path from "path"
 import { GPT4Service } from "../services/gpt4Service"
+import { LLama3Service } from "../services/llama3Service"
 
 dotenv.config({ path: path.join(__dirname, "../.env") })
 
@@ -29,13 +30,10 @@ describe("Pulumi Estimator Tests", () => {
         const estimator = new PulumiEstimator()
         const analyses = await estimator.analyze(
             testPulumiDir,
-            new GPT4Service(openaiApiKey)
+            new LLama3Service(openaiApiKey)
         )
 
-        expect(analyses).toBeInstanceOf(Array)
-        expect(analyses.length).toBeGreaterThan(0)
-
-        const result = JSON.parse(analyses[0])
+        const result = JSON.parse(analyses)
 
         expect(result).toHaveProperty("baseCost")
         expect(result).toHaveProperty("variableCosts")

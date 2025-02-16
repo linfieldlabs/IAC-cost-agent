@@ -1,13 +1,15 @@
-// services/llm/openai-service.ts
 import OpenAI from "openai"
 import { BaseLLMService } from "./baseLLMService"
 
-export class GPT4Service extends BaseLLMService {
+export class LLama3Service extends BaseLLMService {
     private openai: OpenAI
 
     constructor(apiKey: string) {
-        super(apiKey, "gpt-4")
-        this.openai = new OpenAI({ apiKey: this.apiKey })
+        super(apiKey, "llama3-8b-8192")
+        this.openai = new OpenAI({
+            apiKey: this.apiKey,
+            baseURL: "https://api.groq.com/openai/v1",
+        })
     }
 
     protected initializePrompts(): void {
