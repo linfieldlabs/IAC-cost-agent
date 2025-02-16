@@ -35676,7 +35676,7 @@ var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(7484));
 const github_1 = __nccwpck_require__(3228);
-const estimation_handler_1 = __importDefault(__nccwpck_require__(9519));
+const main_1 = __importDefault(__nccwpck_require__(1730));
 try {
     const githubToken = process.env.GITHUB_TOKEN;
     const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -35691,7 +35691,7 @@ try {
     if (!prNumber) {
         throw new Error("Pull Request number is not found");
     }
-    (0, estimation_handler_1.default)(githubToken, openaiApiKey, repo, owner, prNumber);
+    (0, main_1.default)(githubToken, openaiApiKey, repo, owner, prNumber);
 }
 catch (error) {
     core.setFailed(error.message);
@@ -35700,7 +35700,49 @@ catch (error) {
 
 /***/ }),
 
-/***/ 9519:
+/***/ 3902:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BaseEstimator = void 0;
+class BaseEstimator {
+    constructor() { }
+    analyze(iacDir, llmService) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!iacDir) {
+                let directories = yield this.findDirectories();
+                if (directories.length === 0) {
+                    throw new Error("No directories found");
+                }
+                iacDir = directories[0];
+            }
+            try {
+                const previewContent = yield this.generatePreview(iacDir);
+                return yield llmService.getResponse(previewContent, this.getIaCType());
+            }
+            catch (error) {
+                throw new Error(`Failed to analyze preview: ${error}`);
+            }
+        });
+    }
+}
+exports.BaseEstimator = BaseEstimator;
+
+
+/***/ }),
+
+/***/ 9983:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -35747,8 +35789,238 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PulumiEstimator = void 0;
+const baseEstimator_1 = __nccwpck_require__(3902);
+const exec_1 = __nccwpck_require__(5236);
+const path = __importStar(__nccwpck_require__(6928));
+class PulumiEstimator extends baseEstimator_1.BaseEstimator {
+    constructor() {
+        super();
+    }
+    findDirectories() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let pulumiFiles = "";
+                const baseRef = process.env.GITHUB_BASE_REF || "main";
+                yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
+                yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
+                    listeners: {
+                        stdout: (data) => {
+                            pulumiFiles += data.toString();
+                        },
+                    },
+                });
+                const directories = new Set();
+                pulumiFiles
+                    .split("\n")
+                    .filter((file) => file.endsWith("Pulumi.yaml") ||
+                    file.endsWith("Pulumi.yml"))
+                    .forEach((file) => {
+                    directories.add(path.dirname(file));
+                });
+                return Array.from(directories);
+            }
+            catch (error) {
+                throw new Error(`Failed to find Terraform directories: ${error}`);
+            }
+        });
+    }
+    generatePreview(directory) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const options = {
+                    cwd: directory,
+                    env: Object.assign(Object.assign({}, process.env), { PULUMI_CONFIG_PASSPHRASE: "dummy-passphrase" }),
+                };
+                yield (0, exec_1.exec)("npm", ["install"], options);
+                yield (0, exec_1.exec)("pulumi", ["login", "--local"], options);
+                yield (0, exec_1.exec)("pulumi", ["stack", "select", "dev"], options).catch(() => __awaiter(this, void 0, void 0, function* () {
+                    yield (0, exec_1.exec)("pulumi", ["stack", "init", "dev"], options);
+                }));
+                let previewContent = "";
+                yield (0, exec_1.exec)("pulumi", ["preview", "--json"], Object.assign(Object.assign({}, options), { listeners: {
+                        stdout: (data) => {
+                            previewContent += data.toString();
+                        },
+                    } }));
+                return previewContent;
+            }
+            catch (error) {
+                throw new Error(`Failed to generate Terraform preview: ${error}`);
+            }
+        });
+    }
+    getIaCType() {
+        return "pulumi";
+    }
+}
+exports.PulumiEstimator = PulumiEstimator;
+
+
+/***/ }),
+
+/***/ 5321:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TerraformEstimator = void 0;
+const baseEstimator_1 = __nccwpck_require__(3902);
+const exec_1 = __nccwpck_require__(5236);
+const fs = __importStar(__nccwpck_require__(9896));
+const path = __importStar(__nccwpck_require__(6928));
+class TerraformEstimator extends baseEstimator_1.BaseEstimator {
+    constructor() {
+        super();
+    }
+    findDirectories() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let tfFiles = "";
+                const baseRef = process.env.GITHUB_BASE_REF || "main";
+                yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
+                yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
+                    listeners: {
+                        stdout: (data) => {
+                            tfFiles += data.toString();
+                        },
+                    },
+                });
+                const directories = new Set();
+                tfFiles
+                    .split("\n")
+                    .filter((file) => file.endsWith(".tf"))
+                    .forEach((file) => {
+                    directories.add(path.dirname(file));
+                });
+                return Array.from(directories);
+            }
+            catch (error) {
+                throw new Error(`Failed to find Terraform directories: ${error}`);
+            }
+        });
+    }
+    generatePreview(directory) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                yield (0, exec_1.exec)("terraform", ["init"], { cwd: directory });
+                yield (0, exec_1.exec)("terraform", ["plan", "-out=tfplan"], { cwd: directory });
+                let planContent = "";
+                yield (0, exec_1.exec)("terraform", ["show", "-json", "tfplan"], {
+                    cwd: directory,
+                    listeners: {
+                        stdout: (data) => {
+                            planContent += data.toString();
+                        },
+                    },
+                });
+                fs.unlinkSync(path.join(directory, "tfplan"));
+                return planContent;
+            }
+            catch (error) {
+                throw new Error(`Failed to generate Terraform preview: ${error}`);
+            }
+        });
+    }
+    getIaCType() {
+        return "terraform";
+    }
+}
+exports.TerraformEstimator = TerraformEstimator;
+
+
+/***/ }),
+
+/***/ 1730:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.generateCostReport = generateCostReport;
@@ -35756,7 +36028,10 @@ exports.generateCostTable = generateCostTable;
 exports["default"] = run;
 const github_1 = __nccwpck_require__(3228);
 const core = __importStar(__nccwpck_require__(7484));
-const terraform_estimator_1 = __importDefault(__nccwpck_require__(1234));
+const pulumiEstimator_1 = __nccwpck_require__(9983);
+const terraformEstimator_1 = __nccwpck_require__(5321);
+const gpt4Service_1 = __nccwpck_require__(3782);
+const estimators = [new terraformEstimator_1.TerraformEstimator(), new pulumiEstimator_1.PulumiEstimator()];
 function generateCostReport(analyses) {
     let totalBaseCost = 0;
     let totalVariableCosts = { low: 0, medium: 0, high: 0 };
@@ -35852,10 +36127,18 @@ function run(githubToken, openaiApiKey, repo, owner, prNumber) {
             const octokit = (0, github_1.getOctokit)(githubToken);
             const iacStack = core.getInput("iac-stack");
             const iacDir = core.getInput("iac-dir");
-            if (iacStack !== "terraform") {
-                throw new Error(`IaC stack '${iacStack}' is not yet implemented. Currently only 'terraform' is supported.`);
+            let analyses = [];
+            for (const estimator of estimators) {
+                if (estimator.getIaCType() === iacStack) {
+                    analyses.push(yield estimator.analyze(iacDir, new gpt4Service_1.GPT4Service(openaiApiKey)));
+                    break;
+                }
             }
-            let analyses = yield (0, terraform_estimator_1.default)(iacDir, openaiApiKey);
+            if (analyses.length === 0) {
+                throw new Error(`No estimator found for IaC stack '${iacStack}'. Supported stacks are: ${estimators
+                    .map((e) => e.getIaCType())
+                    .join(", ")}.`);
+            }
             const comment = generateCostReport(analyses);
             yield octokit.rest.issues.createComment({
                 owner,
@@ -35873,137 +36156,34 @@ function run(githubToken, openaiApiKey, repo, owner, prNumber) {
 
 /***/ }),
 
-/***/ 1234:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ 9254:
+/***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports["default"] = runTerraformEstimator;
-const exec_1 = __nccwpck_require__(5236);
-const openai_service_1 = __nccwpck_require__(5375);
-const path = __importStar(__nccwpck_require__(6928));
-const fs = __importStar(__nccwpck_require__(9896));
-function findTerraformDirectories() {
-    return __awaiter(this, void 0, void 0, function* () {
-        let tfFiles = "";
-        const baseRef = process.env.GITHUB_BASE_REF || "main";
-        yield (0, exec_1.exec)("git", ["fetch", "origin", baseRef], {});
-        yield (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`], {
-            listeners: {
-                stdout: (data) => {
-                    tfFiles += data.toString();
-                },
-            },
-        });
-        const directories = new Set();
-        tfFiles
-            .split("\n")
-            .filter((file) => file.endsWith(".tf"))
-            .forEach((file) => {
-            directories.add(path.dirname(file));
-        });
-        return Array.from(directories);
-    });
-}
-function generateTerraformPlan(directory) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Initialize terraform in the directory
-        yield (0, exec_1.exec)("terraform", ["init"], { cwd: directory });
-        // Generate plan and save it to a file
-        yield (0, exec_1.exec)("terraform", ["plan", "-out=tfplan"], { cwd: directory });
-        // Convert plan to JSON
-        let planContent = "";
-        yield (0, exec_1.exec)("terraform", ["show", "-json", "tfplan"], {
-            cwd: directory,
-            listeners: {
-                stdout: (data) => {
-                    planContent += data.toString();
-                },
-            },
-        });
-        // Clean up
-        fs.unlinkSync(path.join(directory, "tfplan"));
-        return planContent;
-    });
-}
-function analyzeTerraformPlan(openaiService, planContent, directory) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return openaiService.analyzeTerraformPlan(planContent);
-    });
-}
-function runTerraformEstimator(iacDir, openaiApiKey) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const openaiService = new openai_service_1.OpenAIService(openaiApiKey);
-        let terraformDirs;
-        if (iacDir !== "") {
-            terraformDirs = [iacDir];
+exports.BaseLLMService = void 0;
+class BaseLLMService {
+    constructor(apiKey, model) {
+        this.apiKey = apiKey;
+        this.model = model;
+        this.prompts = new Map();
+        this.initializePrompts();
+    }
+    getPrompt(iacType) {
+        const prompt = this.prompts.get(iacType);
+        if (!prompt) {
+            throw new Error(`No prompt configured for IaC type: ${iacType}`);
         }
-        else {
-            terraformDirs = yield findTerraformDirectories();
-        }
-        console.log("Found Terraform directories:");
-        terraformDirs.forEach((dir) => console.log(dir));
-        const analyses = yield Promise.all(terraformDirs.map((dir) => __awaiter(this, void 0, void 0, function* () {
-            try {
-                const planContent = yield generateTerraformPlan(dir);
-                return yield analyzeTerraformPlan(openaiService, planContent, dir);
-            }
-            catch (error) {
-                console.error(`Failed to analyze directory ${dir}:`, error);
-                return null;
-            }
-        })));
-        return analyses.filter((analysis) => analysis !== null);
-    });
+        return prompt;
+    }
 }
+exports.BaseLLMService = BaseLLMService;
 
 
 /***/ }),
 
-/***/ 5375:
+/***/ 3782:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -36021,62 +36201,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.OpenAIService = void 0;
+exports.GPT4Service = void 0;
+// services/llm/openai-service.ts
 const openai_1 = __importDefault(__nccwpck_require__(2583));
-class OpenAIService {
+const baseLLMService_1 = __nccwpck_require__(9254);
+class GPT4Service extends baseLLMService_1.BaseLLMService {
     constructor(apiKey) {
-        this.openai = new openai_1.default({ apiKey });
+        super(apiKey, "gpt-4");
+        this.openai = new openai_1.default({ apiKey: this.apiKey });
     }
-    analyzeTerraformConfig(fileContent) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const prompt = `
-
-        Analyze the following Terraform configuration and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
-
-1. Identify all AWS resources and their configurations.
-2. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS pricing. If exact prices are unknown, provide an estimated guess.
-3. Calculate estimated costs for:
-   - Base Cost (fixed monthly charges)
-   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
-     * Low Usage (minimal expected usage)
-     * Medium Usage (moderate expected usage)
-     * High Usage (heavy expected usage)
-4. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
-
-Format the response as a structured JSON with the following fields:
- {
-   baseCost: number // estimated fixed monthly cost
-    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
-    serviceChanges: string[] // list of changes such as added, modified, or removed resources
-    detailedCosts: {
-        resourceName: string // name of the resource
-        resourceType: string // type of the resource
-        baseCostEstimate: number // estimated fixed monthly cost for the resource
-        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
-    }[],
-    notes: string[] // list of notes about the cost estimation
-    low_assumptions: string[] // list of assumptions for the low usage scenario
-    medium_assumptions: string[] // list of assumptions for the medium usage scenario
-    high_assumptions: string[] // list of assumptions for the high usage scenario
- }
-
-Do not include any other text or comments in your response. Response should be json only.
-
-
-Here's the Terraform configuration:
-
-${fileContent}`;
-            const response = yield this.openai.chat.completions.create({
-                model: "gpt-4",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.7,
-            });
-            return response.choices[0].message.content || "";
-        });
-    }
-    analyzeTerraformPlan(planContent) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const prompt = `
+    initializePrompts() {
+        this.prompts.set("terraform", {
+            prompt: `
         Analyze the following Terraform plan JSON output and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
 
 1. Examine the planned changes in the Terraform plan JSON.
@@ -36109,20 +36245,71 @@ Format the response as a structured JSON with the following fields:
 
 Do not include any other text or comments in your response. Response should be json only.
 
-Here's the Terraform plan JSON:
+Here's the Terraform plan JSON:`,
+            responseFormat: "{ baseCost: number, variableCosts: {...} }",
+        });
+        this.prompts.set("pulumi", {
+            prompt: `
+        Analyze the following Pulumi preview JSON output and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
 
-${planContent}`;
-            const response = yield this.openai.chat.completions.create({
-                model: "gpt-4",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.7,
-            });
-            console.log("Response:", response.choices[0].message.content);
-            return response.choices[0].message.content || "";
+1. Examine the planned changes in the Pulumi preview JSON.
+2. Identify all AWS resources that will be added, modified, or deleted.
+3. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS pricing. If exact prices are unknown, provide an estimated guess.
+4. Calculate estimated costs for:
+   - Base Cost (fixed monthly charges)
+   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
+     * Low Usage (minimal expected usage)
+     * Medium Usage (moderate expected usage)
+     * High Usage (heavy expected usage)
+5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+
+Format the response as a structured JSON with the following fields:
+ {
+   baseCost: number // estimated fixed monthly cost
+    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
+    serviceChanges: string[] // list of changes such as added, modified, or removed resources
+    detailedCosts: {
+        resourceName: string // name of the resource
+        resourceType: string // type of the resource
+        baseCostEstimate: number // estimated fixed monthly cost for the resource
+        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
+    }[],
+    notes: string[] // list of notes about the cost estimation
+    low_assumptions: string[] // list of assumptions for the low usage scenario
+    medium_assumptions: string[] // list of assumptions for the medium usage scenario
+    high_assumptions: string[] // list of assumptions for the high usage scenario
+ }
+
+Do not include any other text or comments in your response. Response should be json only.
+
+Here's the Pulumi preview JSON:`,
+            responseFormat: "{ baseCost: number, variableCosts: {...} }",
+        });
+    }
+    getResponse(content, iacType) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { prompt } = this.getPrompt(iacType);
+            try {
+                const response = yield this.openai.chat.completions.create({
+                    model: this.model,
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You're an assistant that only speaks JSON. Do not write normal text.",
+                        },
+                        { role: "user", content: `${prompt}\n\n${content}` },
+                    ],
+                    temperature: 0.7,
+                });
+                return response.choices[0].message.content || "";
+            }
+            catch (error) {
+                throw new Error(`OpenAI API error: ${error}`);
+            }
         });
     }
 }
-exports.OpenAIService = OpenAIService;
+exports.GPT4Service = GPT4Service;
 
 
 /***/ }),
