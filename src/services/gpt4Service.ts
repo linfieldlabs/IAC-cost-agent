@@ -25,6 +25,8 @@ export class GPT4Service extends BaseLLMService {
      * Medium Usage (moderate expected usage)
      * High Usage (heavy expected usage)
 5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+6. In notes, include the cost breakdown for each resource. (i.e. EC2 instance with 0.5$ per hour, 24 hours a day, 30 days a month = some $ per month)
+7. when naming resources,  if possible also include the resource type.
 
 Format the response as a structured JSON with the following fields:
  {
@@ -62,6 +64,8 @@ Here's the Terraform plan JSON:`,
      * Medium Usage (moderate expected usage)
      * High Usage (heavy expected usage)
 5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+6. In notes, include the cost breakdown for each resource. (i.e. EC2 instance with 0.5$ per hour, 24 hours a day, 30 days a month = some $ per month)
+7. when naming resources,  if possible also include the resource type.
 
 Format the response as a structured JSON with the following fields:
  {
