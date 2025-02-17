@@ -98,18 +98,10 @@ export function generateCostTable(
     ]
     const rows = detailedCosts.map((cost) => [
         cost.resourceName,
-        `$${cost.baseCostEstimate.toFixed(2)} (${formatDelta(
-            cost.baseCostEstimate
-        )})`,
-        `$${cost.variableCostEstimate.low.toFixed(2)} (${formatDelta(
-            cost.variableCostEstimate.low
-        )})`,
-        `$${cost.variableCostEstimate.medium.toFixed(2)} (${formatDelta(
-            cost.variableCostEstimate.medium
-        )})`,
-        `$${cost.variableCostEstimate.high.toFixed(2)} (${formatDelta(
-            cost.variableCostEstimate.high
-        )})`,
+        `$${cost.baseCostEstimate.toFixed(2)}`,
+        `$${cost.variableCostEstimate.low.toFixed(2)}`,
+        `$${cost.variableCostEstimate.medium.toFixed(2)}`,
+        `$${cost.variableCostEstimate.high.toFixed(2)}`,
     ])
 
     return `| ${headers.join(" | ")} |\n| ${headers
@@ -117,13 +109,6 @@ export function generateCostTable(
         .join(" | ")} |\n${rows
         .map((row) => `| ${row.join(" | ")} |`)
         .join("\n")}`
-}
-
-function formatDelta(delta: number): string {
-    if (delta === 0) return "no Δ"
-    return delta > 0
-        ? `+$${delta.toFixed(2)}`
-        : `-$${Math.abs(delta).toFixed(2)}`
 }
 
 export default async function run(
