@@ -36103,23 +36103,16 @@ function generateCostTable(detailedCosts) {
     ];
     const rows = detailedCosts.map((cost) => [
         cost.resourceName,
-        `$${cost.baseCostEstimate.toFixed(2)} (${formatDelta(cost.baseCostEstimate)})`,
-        `$${cost.variableCostEstimate.low.toFixed(2)} (${formatDelta(cost.variableCostEstimate.low)})`,
-        `$${cost.variableCostEstimate.medium.toFixed(2)} (${formatDelta(cost.variableCostEstimate.medium)})`,
-        `$${cost.variableCostEstimate.high.toFixed(2)} (${formatDelta(cost.variableCostEstimate.high)})`,
+        `$${cost.baseCostEstimate.toFixed(2)}`,
+        `$${cost.variableCostEstimate.low.toFixed(2)}`,
+        `$${cost.variableCostEstimate.medium.toFixed(2)}`,
+        `$${cost.variableCostEstimate.high.toFixed(2)}`,
     ]);
     return `| ${headers.join(" | ")} |\n| ${headers
         .map(() => "---")
         .join(" | ")} |\n${rows
         .map((row) => `| ${row.join(" | ")} |`)
         .join("\n")}`;
-}
-function formatDelta(delta) {
-    if (delta === 0)
-        return "no Δ";
-    return delta > 0
-        ? `+$${delta.toFixed(2)}`
-        : `-$${Math.abs(delta).toFixed(2)}`;
 }
 function run(githubToken, openaiApiKey, repo, owner, prNumber) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -36225,6 +36218,8 @@ class GPT4Service extends baseLLMService_1.BaseLLMService {
      * Medium Usage (moderate expected usage)
      * High Usage (heavy expected usage)
 5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+6. In notes, include the cost breakdown for each resource. (i.e. EC2 instance with 0.5$ per hour, 24 hours a day, 30 days a month = some $ per month)
+7. when naming resources,  if possible also include the resource type.
 
 Format the response as a structured JSON with the following fields:
  {
@@ -36262,6 +36257,8 @@ Here's the Terraform plan JSON:`,
      * Medium Usage (moderate expected usage)
      * High Usage (heavy expected usage)
 5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+6. In notes, include the cost breakdown for each resource. (i.e. EC2 instance with 0.5$ per hour, 24 hours a day, 30 days a month = some $ per month)
+7. when naming resources,  if possible also include the resource type.
 
 Format the response as a structured JSON with the following fields:
  {
