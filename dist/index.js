@@ -36032,34 +36032,49 @@ const pulumiEstimator_1 = __nccwpck_require__(9983);
 const terraformEstimator_1 = __nccwpck_require__(5321);
 const gpt4Service_1 = __nccwpck_require__(3782);
 const estimators = [new terraformEstimator_1.TerraformEstimator(), new pulumiEstimator_1.PulumiEstimator()];
-function generateCostReport(analyses) {
+function generateCostReport(analysis) {
     let totalBaseCost = 0;
-    let totalVariableCosts = { low: 0, medium: 0, high: 0 };
+    let totalVariableCosts = { low: 0, average: 0, high: 0 };
     const allServiceChanges = [];
     const detailedCosts = [];
     const notes = [];
     const lowAssumptions = [];
-    const mediumAssumptions = [];
+    const averageAssumptions = [];
     const highAssumptions = [];
-    // Parse and combine all analyses
-    analyses.forEach((analysis, index) => {
-        try {
-            const data = JSON.parse(analysis);
-            totalBaseCost += data.baseCost;
-            totalVariableCosts.low += data.variableCosts.low;
-            totalVariableCosts.medium += data.variableCosts.medium;
-            totalVariableCosts.high += data.variableCosts.high;
-            allServiceChanges.push(...data.serviceChanges);
-            detailedCosts.push(...data.detailedCosts);
-            notes.push(...data.notes);
-            lowAssumptions.push(...data.low_assumptions);
-            mediumAssumptions.push(...data.medium_assumptions);
-            highAssumptions.push(...data.high_assumptions);
-        }
-        catch (e) {
-            console.error(`Failed to parse analysis: `, e);
-        }
-    });
+    try {
+        const data = JSON.parse(analysis);
+        data.resources.forEach((resource) => {
+            totalBaseCost += resource.base_cost;
+            totalVariableCosts.low += resource.low_usage_cost;
+            totalVariableCosts.average += resource.average_usage_cost;
+            totalVariableCosts.high += resource.high_usage_cost;
+            if (resource.change_to_resource) {
+                allServiceChanges.push(resource.change_to_resource);
+            }
+            detailedCosts.push({
+                service: resource.resource_name,
+                baseCost: resource.base_cost,
+                lowUsage: resource.low_usage_cost,
+                averageUsage: resource.average_usage_cost,
+                highUsage: resource.high_usage_cost,
+            });
+            if (resource.notes && resource.notes.length > 0) {
+                notes.push(...resource.notes);
+            }
+            if (resource.low_usage_assumptions_and_analysis) {
+                lowAssumptions.push(resource.low_usage_assumptions_and_analysis);
+            }
+            if (resource.average_usage_assumptions_and_analysis) {
+                averageAssumptions.push(resource.average_usage_assumptions_and_analysis);
+            }
+            if (resource.high_usage_assumptions_and_analysis) {
+                highAssumptions.push(resource.high_usage_assumptions_and_analysis);
+            }
+        });
+    }
+    catch (e) {
+        console.error(`Failed to parse analysis: `, e);
+    }
     return `## Cost Estimation
 
 **Quick Summary**:
@@ -36067,28 +36082,35 @@ function generateCostReport(analyses) {
 
 - **Variable Cost**:
   - **Low Usage**: $${totalVariableCosts.low.toFixed(2)}
-  - **Medium Usage**: $${totalVariableCosts.medium.toFixed(2)}
+  - **Average Usage**: $${totalVariableCosts.average.toFixed(2)}
   - **High Usage**: $${totalVariableCosts.high.toFixed(2)}
 
 **Service Changes**:
-${allServiceChanges.map((change) => `- ${change}`).join("\n")}
+${allServiceChanges.length > 0
+        ? allServiceChanges.map((change) => `- ${change}`).join("\n")
+        : "No service changes detected."}
 
 ### Cost Summary
 ${generateCostTable(detailedCosts)}
 
 **Assumptions**:
-- **Low Usage**: ${lowAssumptions
-        .map((assumption) => `- ${assumption}`)
-        .join("\n")}
-- **Medium Usage**: ${mediumAssumptions
-        .map((assumption) => `- ${assumption}`)
-        .join("\n")}
-- **High Usage**: ${highAssumptions
-        .map((assumption) => `- ${assumption}`)
-        .join("\n")}
+- **Low Usage**:
+  ${lowAssumptions.length > 0
+        ? lowAssumptions.map((assumption) => `- ${assumption}`).join("\n")
+        : "- No low usage assumptions provided."}
+- **Average Usage**:
+  ${averageAssumptions.length > 0
+        ? averageAssumptions.map((assumption) => `- ${assumption}`).join("\n")
+        : "- No average usage assumptions provided."}
+- **High Usage**:
+  ${highAssumptions.length > 0
+        ? highAssumptions.map((assumption) => `- ${assumption}`).join("\n")
+        : "- No high usage assumptions provided."}
 
 **Notes**:
-${notes.map((note) => `- ${note}`).join("\n")}
+${notes.length > 0
+        ? notes.map((note) => `- ${note}`).join("\n")
+        : "- No additional notes."}
 
 **Disclaimer**: ⚠️  
 These cost estimates are indicative only. Actual costs may vary due to regional pricing differences, varying usage patterns, and changes in AWS pricing. This tool is designed to provide a general guideline for the cost impact of IaC changes and should not be used as the sole basis for financial or operational decisions.`;
@@ -36098,21 +36120,20 @@ function generateCostTable(detailedCosts) {
         "**Service**",
         "**Base Cost**",
         "**Low Usage**",
-        "**Medium Usage**",
+        "**Average Usage**",
         "**High Usage**",
     ];
     const rows = detailedCosts.map((cost) => [
-        cost.resourceName,
-        `$${cost.baseCostEstimate.toFixed(2)}`,
-        `$${cost.variableCostEstimate.low.toFixed(2)}`,
-        `$${cost.variableCostEstimate.medium.toFixed(2)}`,
-        `$${cost.variableCostEstimate.high.toFixed(2)}`,
+        cost.service,
+        `$${cost.baseCost.toFixed(2)}`,
+        `$${cost.lowUsage.toFixed(2)}`,
+        `$${cost.averageUsage.toFixed(2)}`,
+        `$${cost.highUsage.toFixed(2)}`,
     ]);
-    return `| ${headers.join(" | ")} |\n| ${headers
-        .map(() => "---")
-        .join(" | ")} |\n${rows
-        .map((row) => `| ${row.join(" | ")} |`)
-        .join("\n")}`;
+    const headerRow = `| ${headers.join(" | ")} |`;
+    const separatorRow = `| ${headers.map(() => "---").join(" | ")} |`;
+    const tableRows = rows.map((row) => `| ${row.join(" | ")} |`).join("\n");
+    return `${headerRow}\n${separatorRow}\n${tableRows}`;
 }
 function run(githubToken, openaiApiKey, repo, owner, prNumber) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -36120,19 +36141,19 @@ function run(githubToken, openaiApiKey, repo, owner, prNumber) {
             const octokit = (0, github_1.getOctokit)(githubToken);
             const iacStack = core.getInput("iac-stack");
             const iacDir = core.getInput("iac-dir");
-            let analyses = [];
+            let analysis = "";
             for (const estimator of estimators) {
                 if (estimator.getIaCType() === iacStack) {
-                    analyses.push(yield estimator.analyze(iacDir, new gpt4Service_1.GPT4Service(openaiApiKey)));
+                    analysis = yield estimator.analyze(iacDir, new gpt4Service_1.GPT4Service(openaiApiKey));
                     break;
                 }
             }
-            if (analyses.length === 0) {
+            if (analysis === "") {
                 throw new Error(`No estimator found for IaC stack '${iacStack}'. Supported stacks are: ${estimators
                     .map((e) => e.getIaCType())
                     .join(", ")}.`);
             }
-            const comment = generateCostReport(analyses);
+            const comment = generateCostReport(analysis);
             yield octokit.rest.issues.createComment({
                 owner,
                 repo,
@@ -36198,6 +36219,7 @@ exports.GPT4Service = void 0;
 // services/llm/openai-service.ts
 const openai_1 = __importDefault(__nccwpck_require__(2583));
 const baseLLMService_1 = __nccwpck_require__(9254);
+const utils_1 = __nccwpck_require__(3517);
 class GPT4Service extends baseLLMService_1.BaseLLMService {
     constructor(apiKey) {
         super(apiKey, "gpt-4");
@@ -36205,81 +36227,11 @@ class GPT4Service extends baseLLMService_1.BaseLLMService {
     }
     initializePrompts() {
         this.prompts.set("terraform", {
-            prompt: `
-        Analyze the following Terraform plan JSON output and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
-
-1. Examine the planned changes in the Terraform plan JSON.
-2. Identify all AWS resources that will be added, modified, or deleted.
-3. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS pricing. If exact prices are unknown, provide an estimated guess.
-4. Calculate estimated costs for:
-   - Base Cost (fixed monthly charges)
-   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
-     * Low Usage (minimal expected usage)
-     * Medium Usage (moderate expected usage)
-     * High Usage (heavy expected usage)
-5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
-6. In notes, include the cost breakdown for each resource. (i.e. EC2 instance with 0.5$ per hour, 24 hours a day, 30 days a month = some $ per month)
-7. when naming resources,  if possible also include the resource type.
-
-Format the response as a structured JSON with the following fields:
- {
-   baseCost: number // estimated fixed monthly cost
-    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
-    serviceChanges: string[] // list of changes such as added, modified, or removed resources
-    detailedCosts: {
-        resourceName: string // name of the resource
-        resourceType: string // type of the resource
-        baseCostEstimate: number // estimated fixed monthly cost for the resource
-        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
-    }[],
-    notes: string[] // list of notes about the cost estimation
-    low_assumptions: string[] // list of assumptions for the low usage scenario
-    medium_assumptions: string[] // list of assumptions for the medium usage scenario
-    high_assumptions: string[] // list of assumptions for the high usage scenario
- }
-
-Do not include any other text or comments in your response. Response should be json only.
-
-Here's the Terraform plan JSON:`,
+            prompt: (0, utils_1.getPrompt)("Terraform"),
             responseFormat: "{ baseCost: number, variableCosts: {...} }",
         });
         this.prompts.set("pulumi", {
-            prompt: `
-        Analyze the following Pulumi preview JSON output and provide a cost estimation report based on your knowledge of common AWS pricing. The report should meet these requirements:
-
-1. Examine the planned changes in the Pulumi preview JSON.
-2. Identify all AWS resources that will be added, modified, or deleted.
-3. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS pricing. If exact prices are unknown, provide an estimated guess.
-4. Calculate estimated costs for:
-   - Base Cost (fixed monthly charges)
-   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
-     * Low Usage (minimal expected usage)
-     * Medium Usage (moderate expected usage)
-     * High Usage (heavy expected usage)
-5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
-6. In notes, include the cost breakdown for each resource. (i.e. EC2 instance with 0.5$ per hour, 24 hours a day, 30 days a month = some $ per month)
-7. when naming resources,  if possible also include the resource type.
-
-Format the response as a structured JSON with the following fields:
- {
-   baseCost: number // estimated fixed monthly cost
-    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
-    serviceChanges: string[] // list of changes such as added, modified, or removed resources
-    detailedCosts: {
-        resourceName: string // name of the resource
-        resourceType: string // type of the resource
-        baseCostEstimate: number // estimated fixed monthly cost for the resource
-        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
-    }[],
-    notes: string[] // list of notes about the cost estimation
-    low_assumptions: string[] // list of assumptions for the low usage scenario
-    medium_assumptions: string[] // list of assumptions for the medium usage scenario
-    high_assumptions: string[] // list of assumptions for the high usage scenario
- }
-
-Do not include any other text or comments in your response. Response should be json only.
-
-Here's the Pulumi preview JSON:`,
+            prompt: (0, utils_1.getPrompt)("Pulumi"),
             responseFormat: "{ baseCost: number, variableCosts: {...} }",
         });
     }
@@ -36307,6 +36259,57 @@ Here's the Pulumi preview JSON:`,
     }
 }
 exports.GPT4Service = GPT4Service;
+
+
+/***/ }),
+
+/***/ 3517:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getPrompt = getPrompt;
+function getPrompt(iacType) {
+    return `
+    Analyze the following ${iacType} preview JSON output and provide a cost estimation report based on your knowledge of common AWS/Azuere (or other relevent provider) pricing. The report should meet these requirements:
+
+1. Examine the planned changes in the ${iacType} preview JSON.
+2. Identify all resources that will be added, modified, or deleted.
+3. Provide estimated costs by making reasonable assumptions based on general knowledge of AWS/Azure (or other relevent provider) pricing. If exact prices are unknown, provide an estimated guess.
+4. Calculate estimated costs for:
+   - Base Cost (fixed monthly charges)
+   - Variable Cost scenarios based on the resource type. Define appropriate usage tiers for each resource:
+     * Low Usage (minimal expected usage)
+     * Medium Usage (moderate expected usage)
+     * High Usage (heavy expected usage)
+5. If a cost estimation is not possible, return a JSON with null values for the fields instead of omitting them.
+
+Format the response as a structured JSON with the following fields:
+ {
+    "analysis_note": string, // descriptive analysis and your thought process in approaching the problem
+    "resources_names": string[],
+    "resources": {
+        "resource_name": string,
+        "resource_type": string,
+        change_to_resource: string // change to the resource, e.g. "create", "update", "increase memory" etc
+        "base_cost_analysis": string, // thought process and cost breakdown
+        "base_cost": number,
+        "average_usage_assumptions_and_analysis": string, // assumptions and analysis for average usage including cost breakdown
+        "average_usage_cost": number,
+        "high_usage_assumptions_and_analysis": string, // assumptions and analysis for high usage including cost breakdown
+        "high_usage_cost": number,
+        "low_usage_assumptions_and_analysis": string, // assumptions and analysis for low usage including cost breakdown
+        "low_usage_cost": number,
+        "notes": string[], // notes about the cost estimation. 
+    }
+}
+
+Do not include any other text or comments in your response. Response should be json only.
+
+Here's the ${iacType} preview JSON:
+    `;
+}
 
 
 /***/ }),
