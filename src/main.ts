@@ -143,6 +143,8 @@ export function generateCostTable(
         highUsage: number
     }>
 ): string {
+    console.log("########################")
+    console.log(detailedCosts)
     const headers = [
         "**Service**",
         "**Base Cost**",
@@ -197,6 +199,9 @@ export default async function run(
                     .join(", ")}.`
             )
         }
+
+        console.log("LLM Response:\n")
+        console.log(analysis)
 
         const comment = generateCostReport(analysis)
 
