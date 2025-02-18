@@ -36037,10 +36037,7 @@ function generateCostReport(analysis) {
     let totalVariableCosts = { low: 0, average: 0, high: 0 };
     const allServiceChanges = [];
     const detailedCosts = [];
-    const notes = [];
-    const lowAssumptions = [];
-    const averageAssumptions = [];
-    const highAssumptions = [];
+    const resourceDetails = [];
     try {
         const data = JSON.parse(analysis);
         data.resources.forEach((resource) => {
@@ -36049,7 +36046,7 @@ function generateCostReport(analysis) {
             totalVariableCosts.average += resource.average_usage_cost;
             totalVariableCosts.high += resource.high_usage_cost;
             if (resource.change_to_resource) {
-                allServiceChanges.push(resource.change_to_resource);
+                allServiceChanges.push(`${resource.resource_name} -> ${resource.change_to_resource} (${resource.resource_type})`);
             }
             detailedCosts.push({
                 service: resource.resource_name,
@@ -36058,24 +36055,25 @@ function generateCostReport(analysis) {
                 averageUsage: resource.average_usage_cost,
                 highUsage: resource.high_usage_cost,
             });
-            if (resource.notes && resource.notes.length > 0) {
-                notes.push(...resource.notes);
-            }
-            if (resource.low_usage_assumptions_and_analysis) {
-                lowAssumptions.push(resource.low_usage_assumptions_and_analysis);
-            }
-            if (resource.average_usage_assumptions_and_analysis) {
-                averageAssumptions.push(resource.average_usage_assumptions_and_analysis);
-            }
-            if (resource.high_usage_assumptions_and_analysis) {
-                highAssumptions.push(resource.high_usage_assumptions_and_analysis);
-            }
+            resourceDetails.push({
+                resource_name: resource.resource_name,
+                notes: resource.notes || [],
+                lowAssumptions: resource.low_usage_assumptions_and_analysis
+                    ? [resource.low_usage_assumptions_and_analysis]
+                    : [],
+                averageAssumptions: resource.average_usage_assumptions_and_analysis
+                    ? [resource.average_usage_assumptions_and_analysis]
+                    : [],
+                highAssumptions: resource.high_usage_assumptions_and_analysis
+                    ? [resource.high_usage_assumptions_and_analysis]
+                    : [],
+            });
         });
     }
     catch (e) {
         console.error(`Failed to parse analysis: `, e);
     }
-    return `## Cost Estimation
+    let report = `## Cost Estimation
 
 **Quick Summary**:
 - **Base Cost**: $${totalBaseCost.toFixed(2)}
@@ -36093,27 +36091,41 @@ ${allServiceChanges.length > 0
 ### Cost Summary
 ${generateCostTable(detailedCosts)}
 
-**Assumptions**:
-- **Low Usage**:
-  ${lowAssumptions.length > 0
-        ? lowAssumptions.map((assumption) => `- ${assumption}`).join("\n")
-        : "- No low usage assumptions provided."}
-- **Average Usage**:
-  ${averageAssumptions.length > 0
-        ? averageAssumptions.map((assumption) => `- ${assumption}`).join("\n")
-        : "- No average usage assumptions provided."}
-- **High Usage**:
-  ${highAssumptions.length > 0
-        ? highAssumptions.map((assumption) => `- ${assumption}`).join("\n")
-        : "- No high usage assumptions provided."}
+**Resource Details**:
+${resourceDetails
+        .map((resource) => `
+#### ${resource.resource_name}
 
 **Notes**:
-${notes.length > 0
-        ? notes.map((note) => `- ${note}`).join("\n")
+${resource.notes.length > 0
+        ? resource.notes.map((note) => `- ${note}`).join("\n")
         : "- No additional notes."}
+
+**Assumptions**:
+- **Low Usage**:
+  ${resource.lowAssumptions.length > 0
+        ? resource.lowAssumptions
+            .map((assumption) => `- ${assumption}`)
+            .join("\n")
+        : "- No low usage assumptions provided."}
+- **Average Usage**:
+  ${resource.averageAssumptions.length > 0
+        ? resource.averageAssumptions
+            .map((assumption) => `- ${assumption}`)
+            .join("\n")
+        : "- No average usage assumptions provided."}
+- **High Usage**:
+  ${resource.highAssumptions.length > 0
+        ? resource.highAssumptions
+            .map((assumption) => `- ${assumption}`)
+            .join("\n")
+        : "- No high usage assumptions provided."}
+`)
+        .join("\n")}
 
 **Disclaimer**: ⚠️  
 These cost estimates are indicative only. Actual costs may vary due to regional pricing differences, varying usage patterns, and changes in AWS pricing. This tool is designed to provide a general guideline for the cost impact of IaC changes and should not be used as the sole basis for financial or operational decisions.`;
+    return report;
 }
 function generateCostTable(detailedCosts) {
     console.log("########################");
