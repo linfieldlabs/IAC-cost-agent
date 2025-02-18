@@ -36116,6 +36116,8 @@ ${notes.length > 0
 These cost estimates are indicative only. Actual costs may vary due to regional pricing differences, varying usage patterns, and changes in AWS pricing. This tool is designed to provide a general guideline for the cost impact of IaC changes and should not be used as the sole basis for financial or operational decisions.`;
 }
 function generateCostTable(detailedCosts) {
+    console.log("########################");
+    console.log(detailedCosts);
     const headers = [
         "**Service**",
         "**Base Cost**",
@@ -36153,6 +36155,8 @@ function run(githubToken, openaiApiKey, repo, owner, prNumber) {
                     .map((e) => e.getIaCType())
                     .join(", ")}.`);
             }
+            console.log("LLM Response:\n");
+            console.log(analysis);
             const comment = generateCostReport(analysis);
             yield octokit.rest.issues.createComment({
                 owner,
@@ -36290,19 +36294,19 @@ Format the response as a structured JSON with the following fields:
     "analysis_note": string, // descriptive analysis and your thought process in approaching the problem
     "resources_names": string[],
     "resources": {
-        "resource_name": string,
-        "resource_type": string,
-        change_to_resource: string // change to the resource, e.g. "create", "update", "increase memory" etc
-        "base_cost_analysis": string, // thought process and cost breakdown
-        "base_cost": number,
-        "average_usage_assumptions_and_analysis": string, // assumptions and analysis for average usage including cost breakdown
-        "average_usage_cost": number,
-        "high_usage_assumptions_and_analysis": string, // assumptions and analysis for high usage including cost breakdown
-        "high_usage_cost": number,
-        "low_usage_assumptions_and_analysis": string, // assumptions and analysis for low usage including cost breakdown
-        "low_usage_cost": number,
-        "notes": string[], // notes about the cost estimation. 
-    }
+            "resource_name": string,
+            "resource_type": string,
+            change_to_resource: string // change to the resource, e.g. "create", "update", "increase memory" etc
+            "base_cost_analysis": string, // thought process and cost breakdown
+            "base_cost": number,
+            "average_usage_assumptions_and_analysis": string, // assumptions and analysis for average usage including cost breakdown
+            "average_usage_cost": number,
+            "high_usage_assumptions_and_analysis": string, // assumptions and analysis for high usage including cost breakdown
+            "high_usage_cost": number,
+            "low_usage_assumptions_and_analysis": string, // assumptions and analysis for low usage including cost breakdown
+            "low_usage_cost": number,
+            "notes": string[], // notes about the cost estimation. 
+    }[]
 }
 
 Do not include any other text or comments in your response. Response should be json only.

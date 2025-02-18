@@ -3,6 +3,11 @@ import dotenv from "dotenv"
 import path from "path"
 import { GPT4Service } from "../services/gpt4Service"
 import { LLama3Service } from "../services/llama3Service"
+import {
+    EstimatorResponse,
+    generateCostReport,
+    generateCostTable,
+} from "../main"
 
 dotenv.config({ path: path.join(__dirname, "../.env") })
 
@@ -40,37 +45,38 @@ describe("Terraform Estimator Tests", () => {
             new LLama3Service(openaiApiKey!)
         )
 
-        const result = JSON.parse(analyses)
+        const result: EstimatorResponse = JSON.parse(analyses)
 
-        expect(result).toHaveProperty("baseCost")
-        expect(result).toHaveProperty("variableCosts")
-        expect(result.variableCosts).toEqual(
-            expect.objectContaining({
-                low: expect.any(Number),
-                medium: expect.any(Number),
-                high: expect.any(Number),
-            })
-        )
-        expect(result).toHaveProperty("serviceChanges")
-        expect(result).toHaveProperty("detailedCosts")
-        expect(result).toHaveProperty("notes")
-        expect(result).toHaveProperty("low_assumptions")
-        expect(result).toHaveProperty("medium_assumptions")
-        expect(result).toHaveProperty("high_assumptions")
+        expect(result).toHaveProperty("analysis_note")
+        expect(result).toHaveProperty("resources_names")
+        expect(result).toHaveProperty("resources")
+        expect(Array.isArray(result.resources)).toBe(true)
 
-        expect(result.detailedCosts).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    resourceName: expect.any(String),
-                    resourceType: expect.any(String),
-                    baseCostEstimate: expect.any(Number),
-                    variableCostEstimate: expect.objectContaining({
-                        low: expect.any(Number),
-                        medium: expect.any(Number),
-                        high: expect.any(Number),
-                    }),
-                }),
-            ])
-        )
+        result.resources.forEach((resource) => {
+            expect(resource).toHaveProperty("resource_name")
+            expect(resource).toHaveProperty("resource_type")
+            expect(resource).toHaveProperty("change_to_resource")
+            expect(resource).toHaveProperty("base_cost_analysis")
+            expect(resource).toHaveProperty("base_cost")
+            expect(resource).toHaveProperty(
+                "average_usage_assumptions_and_analysis"
+            )
+            expect(resource).toHaveProperty("average_usage_cost")
+            expect(resource).toHaveProperty(
+                "high_usage_assumptions_and_analysis"
+            )
+            expect(resource).toHaveProperty("high_usage_cost")
+            expect(resource).toHaveProperty(
+                "low_usage_assumptions_and_analysis"
+            )
+            expect(resource).toHaveProperty("low_usage_cost")
+            expect(resource).toHaveProperty("notes")
+            expect(Array.isArray(resource.notes)).toBe(true)
+        })
+
+        console.log(analyses)
+
+        const costResult = generateCostReport(analyses)
+        console.log(costResult)
     }, 1000000)
 })

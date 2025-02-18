@@ -18,19 +18,19 @@ Format the response as a structured JSON with the following fields:
     "analysis_note": string, // descriptive analysis and your thought process in approaching the problem
     "resources_names": string[],
     "resources": {
-        "resource_name": string,
-        "resource_type": string,
-        change_to_resource: string // change to the resource, e.g. "create", "update", "increase memory" etc
-        "base_cost_analysis": string, // thought process and cost breakdown
-        "base_cost": number,
-        "average_usage_assumptions_and_analysis": string, // assumptions and analysis for average usage including cost breakdown
-        "average_usage_cost": number,
-        "high_usage_assumptions_and_analysis": string, // assumptions and analysis for high usage including cost breakdown
-        "high_usage_cost": number,
-        "low_usage_assumptions_and_analysis": string, // assumptions and analysis for low usage including cost breakdown
-        "low_usage_cost": number,
-        "notes": string[], // notes about the cost estimation. 
-    }
+            "resource_name": string,
+            "resource_type": string,
+            change_to_resource: string // change to the resource, e.g. "create", "update", "increase memory" etc
+            "base_cost_analysis": string, // thought process and cost breakdown
+            "base_cost": number,
+            "average_usage_assumptions_and_analysis": string, // assumptions and analysis for average usage including cost breakdown
+            "average_usage_cost": number,
+            "high_usage_assumptions_and_analysis": string, // assumptions and analysis for high usage including cost breakdown
+            "high_usage_cost": number,
+            "low_usage_assumptions_and_analysis": string, // assumptions and analysis for low usage including cost breakdown
+            "low_usage_cost": number,
+            "notes": string[], // notes about the cost estimation. 
+    }[]
 }
 
 Do not include any other text or comments in your response. Response should be json only.
