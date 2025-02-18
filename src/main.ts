@@ -7,50 +7,81 @@ import { GPT4Service } from "./services/gpt4Service"
 const estimators = [new TerraformEstimator(), new PulumiEstimator()]
 
 export interface EstimatorResponse {
-    baseCost: number // estimated fixed monthly cost
-    variableCosts: { low: number; medium: number; high: number } // variable monthly cost estimates based on usage
-    serviceChanges: string[] // list of changes such as added, modified, or removed resources
-    detailedCosts: {
-        resourceName: string // name of the resource
-        resourceType: string // type of the resource
-        baseCostEstimate: number // estimated fixed monthly cost for the resource
-        variableCostEstimate: { low: number; medium: number; high: number } // variable cost estimates for the resource
+    analysis_note: string // descriptive analysis and your thought process in approaching the problem
+    resources_names: string[] // list of resource names
+    resources: {
+        resource_name: string // name of the resource
+        resource_type: string // type of the resource
+        change_to_resource: string // change to the resource, e.g. "create", "update", "increase memory" etc
+        base_cost_analysis: string // thought process and cost breakdown for base cost
+        base_cost: number // estimated fixed monthly cost for the resource
+        average_usage_assumptions_and_analysis: string // assumptions and analysis for average usage including cost breakdown
+        average_usage_cost: number // estimated cost for average usage scenario
+        high_usage_assumptions_and_analysis: string // assumptions and analysis for high usage including cost breakdown
+        high_usage_cost: number // estimated cost for high usage scenario
+        low_usage_assumptions_and_analysis: string // assumptions and analysis for low usage including cost breakdown
+        low_usage_cost: number // estimated cost for low usage scenario
+        notes: string[] // notes about the cost estimation for the resource
     }[]
-    notes: string[] // list of notes about the cost estimation
-    low_assumptions: string[] // list of assumptions for the low usage scenario
-    medium_assumptions: string[] // list of assumptions for the medium usage scenario
-    high_assumptions: string[] // list of assumptions for the high usage scenario
 }
 
-export function generateCostReport(analyses: string[]): string {
+export function generateCostReport(analysis: string): string {
     let totalBaseCost = 0
-    let totalVariableCosts = { low: 0, medium: 0, high: 0 }
-    const allServiceChanges: EstimatorResponse["serviceChanges"] = []
-    const detailedCosts: EstimatorResponse["detailedCosts"] = []
-    const notes: EstimatorResponse["notes"] = []
-    const lowAssumptions: EstimatorResponse["low_assumptions"] = []
-    const mediumAssumptions: EstimatorResponse["medium_assumptions"] = []
-    const highAssumptions: EstimatorResponse["high_assumptions"] = []
+    let totalVariableCosts = { low: 0, average: 0, high: 0 }
+    const allServiceChanges: string[] = []
+    const detailedCosts: Array<{
+        service: string
+        baseCost: number
+        lowUsage: number
+        averageUsage: number
+        highUsage: number
+    }> = []
+    const notes: string[] = []
+    const lowAssumptions: string[] = []
+    const averageAssumptions: string[] = []
+    const highAssumptions: string[] = []
 
-    // Parse and combine all analyses
-    analyses.forEach((analysis, index) => {
-        try {
-            const data: EstimatorResponse = JSON.parse(analysis)
-            totalBaseCost += data.baseCost
-            totalVariableCosts.low += data.variableCosts.low
-            totalVariableCosts.medium += data.variableCosts.medium
-            totalVariableCosts.high += data.variableCosts.high
+    try {
+        const data: EstimatorResponse = JSON.parse(analysis)
+        data.resources.forEach((resource) => {
+            totalBaseCost += resource.base_cost
+            totalVariableCosts.low += resource.low_usage_cost
+            totalVariableCosts.average += resource.average_usage_cost
+            totalVariableCosts.high += resource.high_usage_cost
 
-            allServiceChanges.push(...data.serviceChanges)
-            detailedCosts.push(...data.detailedCosts)
-            notes.push(...data.notes)
-            lowAssumptions.push(...data.low_assumptions)
-            mediumAssumptions.push(...data.medium_assumptions)
-            highAssumptions.push(...data.high_assumptions)
-        } catch (e) {
-            console.error(`Failed to parse analysis: `, e)
-        }
-    })
+            if (resource.change_to_resource) {
+                allServiceChanges.push(resource.change_to_resource)
+            }
+
+            detailedCosts.push({
+                service: resource.resource_name,
+                baseCost: resource.base_cost,
+                lowUsage: resource.low_usage_cost,
+                averageUsage: resource.average_usage_cost,
+                highUsage: resource.high_usage_cost,
+            })
+
+            if (resource.notes && resource.notes.length > 0) {
+                notes.push(...resource.notes)
+            }
+
+            if (resource.low_usage_assumptions_and_analysis) {
+                lowAssumptions.push(resource.low_usage_assumptions_and_analysis)
+            }
+            if (resource.average_usage_assumptions_and_analysis) {
+                averageAssumptions.push(
+                    resource.average_usage_assumptions_and_analysis
+                )
+            }
+            if (resource.high_usage_assumptions_and_analysis) {
+                highAssumptions.push(
+                    resource.high_usage_assumptions_and_analysis
+                )
+            }
+        })
+    } catch (e) {
+        console.error(`Failed to parse analysis: `, e)
+    }
 
     return `## Cost Estimation
 
@@ -59,56 +90,80 @@ export function generateCostReport(analyses: string[]): string {
 
 - **Variable Cost**:
   - **Low Usage**: $${totalVariableCosts.low.toFixed(2)}
-  - **Medium Usage**: $${totalVariableCosts.medium.toFixed(2)}
+  - **Average Usage**: $${totalVariableCosts.average.toFixed(2)}
   - **High Usage**: $${totalVariableCosts.high.toFixed(2)}
 
 **Service Changes**:
-${allServiceChanges.map((change) => `- ${change}`).join("\n")}
+${
+    allServiceChanges.length > 0
+        ? allServiceChanges.map((change) => `- ${change}`).join("\n")
+        : "No service changes detected."
+}
 
 ### Cost Summary
 ${generateCostTable(detailedCosts)}
 
 **Assumptions**:
-- **Low Usage**: ${lowAssumptions
-        .map((assumption) => `- ${assumption}`)
-        .join("\n")}
-- **Medium Usage**: ${mediumAssumptions
-        .map((assumption) => `- ${assumption}`)
-        .join("\n")}
-- **High Usage**: ${highAssumptions
-        .map((assumption) => `- ${assumption}`)
-        .join("\n")}
+- **Low Usage**:
+  ${
+      lowAssumptions.length > 0
+          ? lowAssumptions.map((assumption) => `- ${assumption}`).join("\n")
+          : "- No low usage assumptions provided."
+  }
+- **Average Usage**:
+  ${
+      averageAssumptions.length > 0
+          ? averageAssumptions.map((assumption) => `- ${assumption}`).join("\n")
+          : "- No average usage assumptions provided."
+  }
+- **High Usage**:
+  ${
+      highAssumptions.length > 0
+          ? highAssumptions.map((assumption) => `- ${assumption}`).join("\n")
+          : "- No high usage assumptions provided."
+  }
 
 **Notes**:
-${notes.map((note) => `- ${note}`).join("\n")}
+${
+    notes.length > 0
+        ? notes.map((note) => `- ${note}`).join("\n")
+        : "- No additional notes."
+}
 
 **Disclaimer**: ⚠️  
 These cost estimates are indicative only. Actual costs may vary due to regional pricing differences, varying usage patterns, and changes in AWS pricing. This tool is designed to provide a general guideline for the cost impact of IaC changes and should not be used as the sole basis for financial or operational decisions.`
 }
 
 export function generateCostTable(
-    detailedCosts: EstimatorResponse["detailedCosts"]
+    detailedCosts: Array<{
+        service: string
+        baseCost: number
+        lowUsage: number
+        averageUsage: number
+        highUsage: number
+    }>
 ): string {
     const headers = [
         "**Service**",
         "**Base Cost**",
         "**Low Usage**",
-        "**Medium Usage**",
+        "**Average Usage**",
         "**High Usage**",
     ]
     const rows = detailedCosts.map((cost) => [
-        cost.resourceName,
-        `$${cost.baseCostEstimate.toFixed(2)}`,
-        `$${cost.variableCostEstimate.low.toFixed(2)}`,
-        `$${cost.variableCostEstimate.medium.toFixed(2)}`,
-        `$${cost.variableCostEstimate.high.toFixed(2)}`,
+        cost.service,
+        `$${cost.baseCost.toFixed(2)}`,
+        `$${cost.lowUsage.toFixed(2)}`,
+        `$${cost.averageUsage.toFixed(2)}`,
+        `$${cost.highUsage.toFixed(2)}`,
     ])
 
-    return `| ${headers.join(" | ")} |\n| ${headers
-        .map(() => "---")
-        .join(" | ")} |\n${rows
-        .map((row) => `| ${row.join(" | ")} |`)
-        .join("\n")}`
+    const headerRow = `| ${headers.join(" | ")} |`
+    const separatorRow = `| ${headers.map(() => "---").join(" | ")} |`
+
+    const tableRows = rows.map((row) => `| ${row.join(" | ")} |`).join("\n")
+
+    return `${headerRow}\n${separatorRow}\n${tableRows}`
 }
 
 export default async function run(
@@ -124,20 +179,18 @@ export default async function run(
         const iacStack = core.getInput("iac-stack")
         const iacDir = core.getInput("iac-dir")
 
-        let analyses: string[] = []
+        let analysis: string = ""
         for (const estimator of estimators) {
             if (estimator.getIaCType() === iacStack) {
-                analyses.push(
-                    await estimator.analyze(
-                        iacDir,
-                        new GPT4Service(openaiApiKey)
-                    )
+                analysis = await estimator.analyze(
+                    iacDir,
+                    new GPT4Service(openaiApiKey)
                 )
                 break
             }
         }
 
-        if (analyses.length === 0) {
+        if (analysis === "") {
             throw new Error(
                 `No estimator found for IaC stack '${iacStack}'. Supported stacks are: ${estimators
                     .map((e) => e.getIaCType())
@@ -145,7 +198,7 @@ export default async function run(
             )
         }
 
-        const comment = generateCostReport(analyses)
+        const comment = generateCostReport(analysis)
 
         await octokit.rest.issues.createComment({
             owner,
