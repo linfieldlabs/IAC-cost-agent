@@ -20,10 +20,10 @@ jobs:
             - name: Run Cost Estimation
               uses: ./
               with:
-                  iac-stack: ${{ inputs.iac-stack || 'terraform' }}
-                  iac-dir: ${{ inputs.iac-dir || '' }}
-                  model: ${{ inputs.model || 'gpt-4o' }}
-                  model_base_url: ${{ inputs.model_base_url || '' }}
+                  iac-stack: terraform
+                  iac-dir: ""
+                  model: gpt-4o
+                  model_base_url: ""
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
