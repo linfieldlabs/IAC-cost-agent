@@ -38,5 +38,5 @@ runs:
               terraform_version: "1.10.5"
 
         - name: Run Action
-          shell: node20
+          shell: bash
           run: ${{ github.action_path }}/dist/index.js
