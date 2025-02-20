@@ -1,6 +1,10 @@
 name: "IaC Cost Estimator"
 description: "Estimates the cost of changes made in infrastructure-as-code (IaC)"
 
+branding:
+    icon: "server"
+    color: "green"
+
 inputs:
     iac-stack:
         description: "The IaC stack to analyze (terraform, amplify-gen2, cdk, pulumi)"
@@ -10,7 +14,31 @@ inputs:
         description: "Directory path where the IaC code resides"
         required: false
         default: ""
+    model:
+        description: "The model to use for cost estimation"
+        required: false
+        default: "gpt-4o"
+    model_base_url:
+        description: "The base URL for the model"
+        required: false
+        default: ""
 
 runs:
-    using: "node20"
-    main: "dist/index.js"
+    using: "composite"
+    steps:
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          shell: bash
+          with:
+              node-version: "20"
+              cache: "npm"
+
+        - name: Setup Terraform
+          uses: hashicorp/setup-terraform@v3
+          shell: bash
+          with:
+              terraform_version: "1.10.5"
+
+        - name: Run Action
+          shell: node20
+          run: ${{ github.action_path }}/dist/index.js

@@ -1,13 +1,8 @@
 import { TerraformEstimator } from "../estimators/terraformEstimator"
 import dotenv from "dotenv"
 import path from "path"
-import { GPT4Service } from "../services/gpt4Service"
-import { LLama3Service } from "../services/llama3Service"
-import {
-    EstimatorResponse,
-    generateCostReport,
-    generateCostTable,
-} from "../main"
+import { EstimatorResponse, generateCostReport } from "../main"
+import { MscService } from "../services/MscService"
 
 dotenv.config({ path: path.join(__dirname, "../.env") })
 
@@ -42,7 +37,11 @@ describe("Terraform Estimator Tests", () => {
         const estimator = new TerraformEstimator()
         const analyses = await estimator.analyze(
             testTerraformDir,
-            new LLama3Service(openaiApiKey!)
+            new MscService(
+                openaiApiKey!,
+                "llama3-8b-8192",
+                "https://api.groq.com/openai/v1"
+            )
         )
 
         const result: EstimatorResponse = JSON.parse(analyses)

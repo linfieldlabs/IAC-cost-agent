@@ -2,7 +2,7 @@ import { getOctokit } from "@actions/github"
 import * as core from "@actions/core"
 import { PulumiEstimator } from "./estimators/pulumiEstimator"
 import { TerraformEstimator } from "./estimators/terraformEstimator"
-import { GPT4Service } from "./services/gpt4Service"
+import { MscService } from "./services/MscService"
 
 const estimators = [new TerraformEstimator(), new PulumiEstimator()]
 
@@ -199,13 +199,15 @@ export default async function run(
 
         const iacStack = core.getInput("iac-stack")
         const iacDir = core.getInput("iac-dir")
+        const model = core.getInput("model")
+        const modelBaseUrl = core.getInput("model_base_url")
 
         let analysis: string = ""
         for (const estimator of estimators) {
             if (estimator.getIaCType() === iacStack) {
                 analysis = await estimator.analyze(
                     iacDir,
-                    new GPT4Service(openaiApiKey)
+                    new MscService(openaiApiKey, model, modelBaseUrl)
                 )
                 break
             }

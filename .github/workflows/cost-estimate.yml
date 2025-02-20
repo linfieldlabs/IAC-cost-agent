@@ -1,5 +1,9 @@
 name: IaC Cost Estimation
 
+branding:
+    icon: "server"
+    color: "green"
+
 on:
     pull_request:
         types: [opened, synchronize, reopened]
@@ -17,22 +21,13 @@ jobs:
               with:
                   fetch-depth: 2
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-
-            - name: Setup Terraform
-              uses: hashicorp/setup-terraform@v3
-              with:
-                  terraform_version: "1.10.5"
-
             - name: Run Cost Estimation
               uses: ./
               with:
                   iac-stack: ${{ inputs.iac-stack || 'terraform' }}
                   iac-dir: ${{ inputs.iac-dir || '' }}
+                  model: ${{ inputs.model || 'gpt-4o' }}
+                  model_base_url: ${{ inputs.model_base_url || '' }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

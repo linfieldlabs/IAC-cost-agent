@@ -36030,7 +36030,7 @@ const github_1 = __nccwpck_require__(3228);
 const core = __importStar(__nccwpck_require__(7484));
 const pulumiEstimator_1 = __nccwpck_require__(9983);
 const terraformEstimator_1 = __nccwpck_require__(5321);
-const gpt4Service_1 = __nccwpck_require__(3782);
+const MscService_1 = __nccwpck_require__(2930);
 const estimators = [new terraformEstimator_1.TerraformEstimator(), new pulumiEstimator_1.PulumiEstimator()];
 function generateCostReport(analysis) {
     let totalBaseCost = 0;
@@ -36155,10 +36155,12 @@ function run(githubToken, openaiApiKey, repo, owner, prNumber) {
             const octokit = (0, github_1.getOctokit)(githubToken);
             const iacStack = core.getInput("iac-stack");
             const iacDir = core.getInput("iac-dir");
+            const model = core.getInput("model");
+            const modelBaseUrl = core.getInput("model_base_url");
             let analysis = "";
             for (const estimator of estimators) {
                 if (estimator.getIaCType() === iacStack) {
-                    analysis = yield estimator.analyze(iacDir, new gpt4Service_1.GPT4Service(openaiApiKey));
+                    analysis = yield estimator.analyze(iacDir, new MscService_1.MscService(openaiApiKey, model, modelBaseUrl));
                     break;
                 }
             }
@@ -36186,38 +36188,12 @@ function run(githubToken, openaiApiKey, repo, owner, prNumber) {
 
 /***/ }),
 
-/***/ 9254:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.BaseLLMService = void 0;
-class BaseLLMService {
-    constructor(apiKey, model) {
-        this.apiKey = apiKey;
-        this.model = model;
-        this.prompts = new Map();
-        this.initializePrompts();
-    }
-    getPrompt(iacType) {
-        const prompt = this.prompts.get(iacType);
-        if (!prompt) {
-            throw new Error(`No prompt configured for IaC type: ${iacType}`);
-        }
-        return prompt;
-    }
-}
-exports.BaseLLMService = BaseLLMService;
-
-
-/***/ }),
-
-/***/ 3782:
+/***/ 2930:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+// miscellaneous service
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36231,15 +36207,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.GPT4Service = void 0;
-// services/llm/openai-service.ts
+exports.MscService = void 0;
 const openai_1 = __importDefault(__nccwpck_require__(2583));
 const baseLLMService_1 = __nccwpck_require__(9254);
 const utils_1 = __nccwpck_require__(3517);
-class GPT4Service extends baseLLMService_1.BaseLLMService {
-    constructor(apiKey) {
-        super(apiKey, "gpt-4");
-        this.openai = new openai_1.default({ apiKey: this.apiKey });
+class MscService extends baseLLMService_1.BaseLLMService {
+    constructor(apiKey, model, baseUrl) {
+        super(apiKey, model);
+        this.baseUrl = baseUrl;
+        this.openai = new openai_1.default({
+            apiKey: this.apiKey,
+            baseURL: this.baseUrl,
+        });
     }
     initializePrompts() {
         this.prompts.set("terraform", {
@@ -36274,7 +36253,34 @@ class GPT4Service extends baseLLMService_1.BaseLLMService {
         });
     }
 }
-exports.GPT4Service = GPT4Service;
+exports.MscService = MscService;
+
+
+/***/ }),
+
+/***/ 9254:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BaseLLMService = void 0;
+class BaseLLMService {
+    constructor(apiKey, model) {
+        this.apiKey = apiKey;
+        this.model = model;
+        this.prompts = new Map();
+        this.initializePrompts();
+    }
+    getPrompt(iacType) {
+        const prompt = this.prompts.get(iacType);
+        if (!prompt) {
+            throw new Error(`No prompt configured for IaC type: ${iacType}`);
+        }
+        return prompt;
+    }
+}
+exports.BaseLLMService = BaseLLMService;
 
 
 /***/ }),
