@@ -28,14 +28,12 @@ runs:
     steps:
         - name: Setup Node.js
           uses: actions/setup-node@v4
-          shell: bash
           with:
               node-version: "20"
               cache: "npm"
 
         - name: Setup Terraform
           uses: hashicorp/setup-terraform@v3
-          shell: bash
           with:
               terraform_version: "1.10.5"
 
