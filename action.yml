@@ -39,4 +39,4 @@ runs:
 
         - name: Run Action
           shell: bash
-          run: ${{ github.action_path }}/dist/index.js
+          run: node ${{ github.action_path }}/dist/index.js
