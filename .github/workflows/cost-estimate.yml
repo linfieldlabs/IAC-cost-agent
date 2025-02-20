@@ -1,5 +1,9 @@
 name: IaC Cost Estimation
 
+branding:
+    icon: "server"
+    color: "green"
+
 on:
     pull_request:
         types: [opened, synchronize, reopened]
