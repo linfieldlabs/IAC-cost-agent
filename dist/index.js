@@ -36239,7 +36239,7 @@ class MscService extends baseLLMService_1.BaseLLMService {
                     messages: [
                         {
                             role: "system",
-                            content: "You're an assistant that only speaks JSON. Do not write normal text.",
+                            content: "You're an assistant that only speaks JSON. Do not write normal text. Strictly start your response with { and end with }. Entire responses should be valid JSON.",
                         },
                         { role: "user", content: `${prompt}\n\n${content}` },
                     ],
