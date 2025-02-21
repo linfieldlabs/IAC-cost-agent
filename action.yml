@@ -50,8 +50,6 @@ runs:
         - name: Run Action
           shell: bash
           env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
               IAC_STACK: ${{ inputs.iac-stack }}
               IAC_DIR: ${{ inputs.iac-dir }}
               MODEL: ${{ inputs.model }}
