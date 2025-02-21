@@ -22,6 +22,9 @@ inputs:
         description: "The base URL for the model"
         required: false
         default: ""
+    openai-api-key:
+        description: "OpenAI API Key"
+        required: true
 
 runs:
     using: "composite"
@@ -46,4 +49,11 @@ runs:
 
         - name: Run Action
           shell: bash
+          env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+              IAC_STACK: ${{ inputs.iac-stack }}
+              IAC_DIR: ${{ inputs.iac-dir }}
+              MODEL: ${{ inputs.model }}
+              MODEL_BASE_URL: ${{ inputs.model_base_url }}
           run: node dist/index.js

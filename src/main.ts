@@ -190,24 +190,27 @@ export function generateCostTable(
 export default async function run(
     githubToken: string,
     openaiApiKey: string,
-    repo: string,
     owner: string,
-    prNumber: number
+    repo: string,
+    prNumber: number,
+    iacStack: string,
+    iacDir: string,
+    model: string,
+    modelBaseUrl: string
 ) {
     try {
         const octokit = getOctokit(githubToken)
-
-        const iacStack = core.getInput("iac-stack")
-        const iacDir = core.getInput("iac-dir")
-        const model = core.getInput("model")
-        const modelBaseUrl = core.getInput("model_base_url")
 
         let analysis: string = ""
         for (const estimator of estimators) {
             if (estimator.getIaCType() === iacStack) {
                 analysis = await estimator.analyze(
-                    iacDir,
-                    new MscService(openaiApiKey, model, modelBaseUrl)
+                    iacDir ?? "",
+                    new MscService(
+                        openaiApiKey,
+                        model ?? "",
+                        modelBaseUrl ?? ""
+                    )
                 )
                 break
             }

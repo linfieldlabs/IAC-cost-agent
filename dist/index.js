@@ -35682,6 +35682,10 @@ try {
     const openaiApiKey = process.env.OPENAI_API_KEY;
     const prNumber = (_b = (_a = github_1.context === null || github_1.context === void 0 ? void 0 : github_1.context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.number;
     const { owner, repo } = github_1.context === null || github_1.context === void 0 ? void 0 : github_1.context.repo;
+    const iacStack = process.env.IAC_STACK;
+    const iacDir = process.env.IAC_DIR;
+    const model = process.env.MODEL;
+    const modelBaseUrl = process.env.MODEL_BASE_URL;
     if (!githubToken) {
         throw new Error("GitHub token not found");
     }
@@ -35691,7 +35695,7 @@ try {
     if (!prNumber) {
         throw new Error("Pull Request number is not found");
     }
-    (0, main_1.default)(githubToken, openaiApiKey, repo, owner, prNumber);
+    (0, main_1.default)(githubToken, openaiApiKey, repo, owner, prNumber, iacStack !== null && iacStack !== void 0 ? iacStack : "", iacDir !== null && iacDir !== void 0 ? iacDir : "", model !== null && model !== void 0 ? model : "", modelBaseUrl !== null && modelBaseUrl !== void 0 ? modelBaseUrl : "");
 }
 catch (error) {
     core.setFailed(error.message);
@@ -36149,18 +36153,14 @@ function generateCostTable(detailedCosts) {
     const tableRows = rows.map((row) => `| ${row.join(" | ")} |`).join("\n");
     return `${headerRow}\n${separatorRow}\n${tableRows}`;
 }
-function run(githubToken, openaiApiKey, repo, owner, prNumber) {
+function run(githubToken, openaiApiKey, owner, repo, prNumber, iacStack, iacDir, model, modelBaseUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const octokit = (0, github_1.getOctokit)(githubToken);
-            const iacStack = core.getInput("iac-stack");
-            const iacDir = core.getInput("iac-dir");
-            const model = core.getInput("model");
-            const modelBaseUrl = core.getInput("model_base_url");
             let analysis = "";
             for (const estimator of estimators) {
                 if (estimator.getIaCType() === iacStack) {
-                    analysis = yield estimator.analyze(iacDir, new MscService_1.MscService(openaiApiKey, model, modelBaseUrl));
+                    analysis = yield estimator.analyze(iacDir !== null && iacDir !== void 0 ? iacDir : "", new MscService_1.MscService(openaiApiKey, model !== null && model !== void 0 ? model : "", modelBaseUrl !== null && modelBaseUrl !== void 0 ? modelBaseUrl : ""));
                     break;
                 }
             }
