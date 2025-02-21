@@ -43,4 +43,4 @@ runs:
               IAC_DIR: ${{ inputs.iac-dir }}
               MODEL: ${{ inputs.model }}
               MODEL_BASE_URL: ${{ inputs.model_base_url }}
-          run: node dist/index.js
+          run: node ${{ github.action_path }}/dist/index.js
