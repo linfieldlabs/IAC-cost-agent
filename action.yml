@@ -38,10 +38,6 @@ runs:
               terraform_version: "1.10.5"
 
         - name: Run Action
+          uses: ./
           shell: bash
-          run: node ${{ github.action_path }}/dist/index.js
-          with:
-              iac-stack: ${{ inputs.iac-stack || 'terraform' }}
-              iac-dir: ${{ inputs.iac-dir || '' }}
-              model: ${{ inputs.model || 'gpt-4o' }}
-              model_base_url: ${{ inputs.model_base_url || '' }}
+          run: node dist/index.js
