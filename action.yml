@@ -22,9 +22,6 @@ inputs:
         description: "The base URL for the model"
         required: false
         default: ""
-    openai-api-key:
-        description: "OpenAI API Key"
-        required: true
 
 runs:
     using: "composite"
@@ -42,10 +39,6 @@ runs:
           uses: hashicorp/setup-terraform@v3
           with:
               terraform_version: "1.10.5"
-
-        - name: Install dependencies
-          shell: bash
-          run: npm ci
 
         - name: Run Action
           shell: bash
