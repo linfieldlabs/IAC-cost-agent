@@ -26,6 +26,9 @@ inputs:
 runs:
     using: "composite"
     steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
         - name: Setup Node.js
           uses: actions/setup-node@v4
           with:
@@ -37,5 +40,10 @@ runs:
           with:
               terraform_version: "1.10.5"
 
+        - name: Install dependencies
+          shell: bash
+          run: npm ci
+
         - name: Run Action
+          shell: bash
           run: node dist/index.js
