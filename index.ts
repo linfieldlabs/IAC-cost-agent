@@ -9,6 +9,11 @@ try {
     const prNumber = context?.payload?.pull_request?.number
     const { owner, repo } = context?.repo
 
+    const iacStack = process.env.IAC_STACK
+    const iacDir = process.env.IAC_DIR
+    const model = process.env.MODEL
+    const modelBaseUrl = process.env.MODEL_BASE_URL
+
     if (!githubToken) {
         throw new Error("GitHub token not found")
     }
@@ -21,7 +26,17 @@ try {
         throw new Error("Pull Request number is not found")
     }
 
-    run(githubToken, openaiApiKey, repo, owner, prNumber)
+    run(
+        githubToken,
+        openaiApiKey,
+        repo,
+        owner,
+        prNumber,
+        iacStack ?? "",
+        iacDir ?? "",
+        model ?? "",
+        modelBaseUrl ?? ""
+    )
 } catch (error) {
     core.setFailed((error as Error).message)
 }
