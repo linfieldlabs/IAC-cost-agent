@@ -22,16 +22,10 @@ inputs:
         description: "The base URL for the model"
         required: false
         default: ""
-    openai-api-key:
-        description: "OpenAI API Key"
-        required: true
 
 runs:
     using: "composite"
     steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
-
         - name: Setup Node.js
           uses: actions/setup-node@v4
           with:
