@@ -29,8 +29,8 @@ try {
     run(
         githubToken,
         openaiApiKey,
-        repo,
         owner,
+        repo,
         prNumber,
         iacStack ?? "",
         iacDir ?? "",

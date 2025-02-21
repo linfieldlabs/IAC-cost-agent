@@ -39,7 +39,7 @@ export class MscService extends BaseLLMService {
                     {
                         role: "system",
                         content:
-                            "You're an assistant that only speaks JSON. Do not write normal text.",
+                            "You're an assistant that only speaks JSON. Do not write normal text. Strictly start your response with { and end with }. Entire responses should be valid JSON.",
                     },
                     { role: "user", content: `${prompt}\n\n${content}` },
                 ],

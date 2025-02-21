@@ -35695,7 +35695,7 @@ try {
     if (!prNumber) {
         throw new Error("Pull Request number is not found");
     }
-    (0, main_1.default)(githubToken, openaiApiKey, repo, owner, prNumber, iacStack !== null && iacStack !== void 0 ? iacStack : "", iacDir !== null && iacDir !== void 0 ? iacDir : "", model !== null && model !== void 0 ? model : "", modelBaseUrl !== null && modelBaseUrl !== void 0 ? modelBaseUrl : "");
+    (0, main_1.default)(githubToken, openaiApiKey, owner, repo, prNumber, iacStack !== null && iacStack !== void 0 ? iacStack : "", iacDir !== null && iacDir !== void 0 ? iacDir : "", model !== null && model !== void 0 ? model : "", modelBaseUrl !== null && modelBaseUrl !== void 0 ? modelBaseUrl : "");
 }
 catch (error) {
     core.setFailed(error.message);
@@ -36239,7 +36239,7 @@ class MscService extends baseLLMService_1.BaseLLMService {
                     messages: [
                         {
                             role: "system",
-                            content: "You're an assistant that only speaks JSON. Do not write normal text.",
+                            content: "You're an assistant that only speaks JSON. Do not write normal text. Strictly start your response with { and end with }. Entire responses should be valid JSON.",
                         },
                         { role: "user", content: `${prompt}\n\n${content}` },
                     ],
