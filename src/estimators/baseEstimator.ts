@@ -17,10 +17,16 @@ export abstract class BaseEstimator {
 
         try {
             const previewContent = await this.generatePreview(iacDir)
-            return await llmService.getResponse(
+            let response = await llmService.getResponse(
                 previewContent,
                 this.getIaCType()
             )
+            // remove ```json and ``` (code block response from LLM)
+            response = response
+                .replace(/^```json\s*/, "")
+                .replace(/```$/, "")
+                .replace(/^```\s*/, "")
+            return response
         } catch (error) {
             throw new Error(`Failed to analyze preview: ${error}`)
         }
