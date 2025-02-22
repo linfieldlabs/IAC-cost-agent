@@ -35733,7 +35733,13 @@ class BaseEstimator {
             }
             try {
                 const previewContent = yield this.generatePreview(iacDir);
-                return yield llmService.getResponse(previewContent, this.getIaCType());
+                let response = yield llmService.getResponse(previewContent, this.getIaCType());
+                // remove ```json and ``` (code block response from LLM)
+                response = response
+                    .replace(/^```json\s*/, "")
+                    .replace(/```$/, "")
+                    .replace(/^```\s*/, "");
+                return response;
             }
             catch (error) {
                 throw new Error(`Failed to analyze preview: ${error}`);
