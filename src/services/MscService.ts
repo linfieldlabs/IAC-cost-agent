@@ -43,7 +43,8 @@ export class MscService extends BaseLLMService {
                     },
                     { role: "user", content: `${prompt}\n\n${content}` },
                 ],
-                temperature: 0.7,
+                temperature: 0.2,
+                top_p: 0.1,
             })
 
             return response.choices[0].message.content || ""
