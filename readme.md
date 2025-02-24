@@ -65,16 +65,9 @@ jobs:
 
 ## Example Output
 
-The action generates detailed PR comments including:
+This sample evaluates the cost estimation of a video processing pipeline deployed on AWS using Terraform. The architecture includes fixed-cost components (EC2, RDS, EIP) and variable-cost components (S3, Lambda, CloudWatch).
 
--   Base cost estimates
--   Variable cost scenarios
--   Service-by-service breakdown
--   Change summaries
--   Usage assumptions
--   Cost impact disclaimers
-
-[View Example PR Comment TODO](link-to-example-pr)
+[View Output](https://github.com/linfieldlabs/IAC-cost-agent/blob/main/docs/vid-process-sample_v2.md)
 
 ## Local Development
 
@@ -139,14 +132,6 @@ npm test
 -   **Estimators**: Handle IaC-specific operations (plan/preview generation)
 -   **LLM Services**: Interface with AI models for cost analysis
 -   **Core Logic**: Processes and formats cost estimations
-
-## Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines TODO](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the TODO - see the [LICENSE](LICENSE) file for details.
 
 ## Disclaimer
 
