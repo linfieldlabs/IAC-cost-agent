@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>IaC Cost Estimator - GitHub Action</title>
+        <!-- Google Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+            rel="stylesheet"
+        />
+        <!-- Font Awesome -->
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+        <style>
+            :root {
+                --primary-color: #007bff;
+                --secondary-color: #6c757d;
+                --background-color: #f8f9fa;
+                --text-color: #212529;
+                --heading-color: #343a40;
+                --card-bg: #ffffff;
+                --border-radius: 8px;
+                --max-width: 800px;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family: "Roboto", sans-serif;
+                background-color: var(--background-color);
+                color: var(--text-color);
+                line-height: 1.6;
+            }
+            header {
+                background-color: var(--card-bg);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                padding: 20px 0;
+            }
+            .container {
+                width: 90%;
+                max-width: var(--max-width);
+                margin: 0 auto;
+            }
+            .navbar {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 20px;
+            }
+            .navbar a {
+                text-decoration: none;
+                color: var(--text-color);
+                font-weight: 500;
+                padding: 5px 10px;
+            }
+            .navbar a:hover {
+                color: var(--primary-color);
+            }
+            /* Hero Section */
+            .hero {
+                background: linear-gradient(135deg, #007bff, #00aaff);
+                color: #fff;
+                padding: 100px 0;
+                text-align: center;
+            }
+            .hero h1 {
+                font-size: 48px;
+                margin-bottom: 20px;
+            }
+            .hero p {
+                font-size: 20px;
+                margin-bottom: 30px;
+            }
+            .hero .cta-buttons a {
+                display: inline-block;
+                margin: 10px;
+                padding: 12px 30px;
+                background: #fff;
+                color: var(--primary-color);
+                border-radius: var(--border-radius);
+                font-weight: bold;
+                text-decoration: none;
+                transition: background 0.3s;
+            }
+            .hero .cta-buttons a:hover {
+                background: #e9ecef;
+            }
+            .hero .cta-buttons a i {
+                margin-right: 8px;
+            }
+            /* Hero Comment Preview */
+            #hero-comment-preview {
+                padding: 40px 0;
+                text-align: center;
+            }
+            .hero-comment-img {
+                width: 100%;
+                max-width: 600px;
+                border-radius: var(--border-radius);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+            /* Sections */
+            section {
+                padding: 60px 0;
+            }
+            section h2 {
+                text-align: center;
+                margin-bottom: 40px;
+                font-size: 32px;
+                color: var(--heading-color);
+            }
+            .features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 20px;
+            }
+            .feature-card {
+                background: var(--card-bg);
+                padding: 20px;
+                border-radius: var(--border-radius);
+                text-align: center;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+            .feature-card i {
+                font-size: 36px;
+                color: var(--primary-color);
+                margin-bottom: 15px;
+            }
+            .feature-card h3 {
+                font-size: 20px;
+                margin-bottom: 10px;
+                color: var(--heading-color);
+            }
+            .feature-card p {
+                font-size: 16px;
+                color: var(--secondary-color);
+            }
+            /* Code Snippet Section */
+            .code-snippet {
+                background: var(--card-bg);
+                padding: 20px;
+                border-radius: var(--border-radius);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                overflow-x: auto;
+                font-family: "Courier New", Courier, monospace;
+                font-size: 14px;
+                margin-bottom: 20px;
+            }
+            /* Comments Gallery */
+            .comments-gallery {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 20px;
+                justify-content: center;
+            }
+            .comments-gallery img {
+                max-width: 100%;
+                border-radius: var(--border-radius);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+            /* CTA Buttons in Examples */
+            .cta-buttons {
+                text-align: center;
+                margin-top: 20px;
+            }
+            /* Footer */
+            footer {
+                background: var(--card-bg);
+                padding: 20px 0;
+                text-align: center;
+                font-size: 14px;
+                color: var(--secondary-color);
+                border-top: 1px solid #dee2e6;
+            }
+            @media (max-width: 768px) {
+                .hero h1 {
+                    font-size: 36px;
+                }
+                .hero p {
+                    font-size: 18px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="container navbar">
+                <a href="#features">Features</a>
+                <a href="#getting-started">Getting Started</a>
+                <a href="#process">Process</a>
+                <a href="#limitations">Limitations</a>
+                <a href="#examples">Examples</a>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <h1>Automated IaC Cost Estimation</h1>
+                <p>
+                    Calculate infrastructure cost estimates for pull request
+                    changes using an automated GitHub Action powered by LLMs.
+                </p>
+                <div class="cta-buttons">
+                    <a
+                        href="https://github.com/linfieldlabs/iac-cost-estimator"
+                        target="_blank"
+                    >
+                        <i class="fa-brands fa-github"></i> GitHub Repo
+                    </a>
+                    <a
+                        href="https://github.com/marketplace/actions/iac-cost-estimator"
+                        target="_blank"
+                    >
+                        <i class="fa-solid fa-store"></i> Marketplace
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hero Comment Preview -->
+        <section id="hero-comment-preview">
+            <div class="container">
+                <img
+                    src="sample.png"
+                    alt="Sample Comment Preview"
+                    class="hero-comment-img"
+                />
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features">
+            <div class="container">
+                <h2>Key Features</h2>
+                <div class="features">
+                    <div class="feature-card">
+                        <i class="fa-solid fa-calculator"></i>
+                        <h3>Automated Analysis</h3>
+                        <p>
+                            Calculates estimated costs from pull request changes
+                            using defined pricing models.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <h3>Cost Breakdown</h3>
+                        <p>
+                            Breaks down costs per resource aligned with current
+                            cloud provider pricing.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fa-solid fa-code"></i>
+                        <h3>Terraform & Pulumi</h3>
+                        <p>
+                            Supports both Terraform and Pulumi configurations.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fa-solid fa-plug"></i>
+                        <h3>GitHub Integration</h3>
+                        <p>
+                            Integrates directly into your GitHub workflows for
+                            real-time feedback.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Getting Started Section -->
+        <section id="getting-started">
+            <div class="container">
+                <h2>Getting Started</h2>
+                <p>
+                    Add the IaC Cost Estimator to your GitHub workflow. Use the
+                    YAML configuration below and ensure your repository includes
+                    the required secrets and inputs.
+                </p>
+                <div class="code-snippet">
+                    <pre><code>name: IaC Cost Estimation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  estimate-cost:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: linfieldlabs/iac-cost-estimator@v1
+        with:
+          iac-stack: "terraform"  # Required: "terraform" or "pulumi"
+          iac-dir: "infrastructure"  # Optional: defaults to repository root
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+</code></pre>
+                </div>
+                <p>
+                    <strong>Repository Secrets:</strong>
+                    <code>OPENAI_API_KEY</code>, <code>AWS_ACCESS_KEY_ID</code>,
+                    <code>AWS_SECRET_ACCESS_KEY</code>, <code>GITHUB_TOKEN</code
+                    ><br />
+                    <strong>Action Inputs:</strong>
+                    <code>iac-stack</code> (required) and
+                    <code>iac-dir</code> (optional)
+                </p>
+            </div>
+        </section>
+
+        <!-- Process Section -->
+        <section id="process">
+            <div class="container">
+                <h2>Process</h2>
+                <p>
+                    Upon a pull request event, the action executes these steps:
+                </p>
+                <ul>
+                    <li>
+                        Checks out the repository and reads the designated IaC
+                        files.
+                    </li>
+                    <li>
+                        Analyzes configuration changes to generate an execution
+                        plan.
+                    </li>
+                    <li>
+                        Calculates estimated costs using static pricing models.
+                    </li>
+                    <li>
+                        Posts a detailed cost breakdown as a comment on the pull
+                        request.
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Limitations Section -->
+        <section id="limitations">
+            <div class="container">
+                <h2>Limitations</h2>
+                <p>
+                    Cost estimates are based on predefined pricing models and
+                    may not reflect real-time fluctuations, regional pricing
+                    differences, or usage variations. The tool currently
+                    supports only Terraform and Pulumi; additional platforms may
+                    need custom integration.
+                </p>
+            </div>
+        </section>
+
+        <!-- Examples Section -->
+        <section id="examples">
+            <div class="container">
+                <h2>Examples</h2>
+                <p>
+                    This sample evaluates the cost estimation of a video
+                    processing pipeline deployed on AWS using Terraform. The
+                    architecture includes fixed-cost components (EC2, RDS, EIP)
+                    and variable-cost components (S3, Lambda, CloudWatch).
+                </p>
+
+                <div class="cta-buttons">
+                    <a
+                        href="https://github.com/linfieldlabs/IAC-cost-agent/blob/main/docs/vid-process-sample_v2.md"
+                        target="_blank"
+                    >
+                        <i class="fa-brands fa-github"></i> View Sample on
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="container">
+                <p>
+                    <small
+                        >Disclaimer: Cost estimates are indicative and should be
+                        verified against current provider pricing.</small
+                    >
+                </p>
+            </div>
+        </footer>
+    </body>
+</html>
