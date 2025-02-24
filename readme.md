@@ -1,17 +1,62 @@
 # IaC Cost Estimator GitHub Action
 
-An AI-powered GitHub Action that automatically calculates and provides cost estimates for infrastructure changes in your Pull Requests. Using LLM models, it analyzes your Infrastructure as Code (IaC) changes and generates detailed cost impact reports.
+An AI-powered GitHub Action that automatically calculates and provides cost estimates for infrastructure changes in your Pull Requests.
 
-![Example Cost Estimation TODO](cost-estimation-example.png)
+## Quick Start
+
+1. Add the action to your workflow:
+
+```yaml
+name: IaC Cost Estimation
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+jobs:
+    estimate-cost:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: linfieldlabs/iac-cost-estimator@v1
+              with:
+                  iac-stack: "terraform" # Required: terraform or pulumi
+                  iac-dir: "infrastructure" # Optional: defaults to root directory
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+                  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+2. Configure required secrets in your repository settings:
+
+### Required Environment Variables
+
+| Name                    | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `OPENAI_API_KEY`        | Your OpenAI API key (or any compatible API) |
+| `AWS_ACCESS_KEY_ID`     | AWS access key for IaC operations           |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key for IaC operations           |
+| `GITHUB_TOKEN`          | GitHub token for PR comments                |
+
+### Action Inputs
+
+| Name             | Required | Default     | Description                            |
+| ---------------- | -------- | ----------- | -------------------------------------- |
+| `iac-stack`      | Yes      | `terraform` | IaC platform (`terraform` or `pulumi`) |
+| `iac-dir`        | No       | `""`        | Directory containing IaC files         |
+| `model`          | No       | `gpt-4`     | LLM model to use                       |
+| `model_base_url` | No       | `""`        | Custom model API endpoint              |
 
 ## Features
 
 -   🔄 Automatic cost analysis on PR changes
--   💰 Detailed cost breakdowns (base costs and variable costs)
+-   💰 Detailed cost breakdowns
 -   📊 Usage-based scenarios (Low, Medium, High)
--   🏗️ Multiple IaC stack support
--   🤖 AI-powered cost estimation
--   📝 Comprehensive PR comments with cost impact
+-   🏗️ Supports Terraform and Pulumi
+-   🤖 AI-powered estimation
+-   📝 Comprehensive PR comments
 
 ## Supported IaC Platforms
 
@@ -30,41 +75,6 @@ The action generates detailed PR comments including:
 -   Cost impact disclaimers
 
 [View Example PR Comment TODO](link-to-example-pr)
-
-## Usage in Your Repository
-
-1. Add the action to your workflow:
-
-```yaml
-name: IaC Cost Estimation
-
-on:
-    pull_request:
-        types: [opened, synchronize, reopened]
-
-jobs:
-    estimate-cost:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: linfieldlabs/iac-cost-estimator@v1
-              with:
-                    iac-stack: "terraform" # or 'pulumi'
-                    iac-dir: "infrastructure" # optional
-                env:
-                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-                    AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-```
-
-2. Configure required secrets in your repository:
-
--   `OPENAI_API_KEY`: Your OpenAI API key
--   `AWS_ACCESS_KEY_ID`: AWS access key for IaC operations
--   `AWS_SECRET_ACCESS_KEY`: AWS secret key for IaC operations
-
-> You can use any API that supports the OpenAI API format.
 
 ## Local Development
 
