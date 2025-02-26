@@ -64,6 +64,28 @@
             .navbar a:hover {
                 color: var(--primary-color);
             }
+            /* Add these new styles for mobile menu */
+            .menu-toggle {
+                display: none;
+                font-size: 24px;
+                cursor: pointer;
+                padding: 5px;
+            }
+            @media (max-width: 768px) {
+                .menu-toggle {
+                    display: block;
+                }
+                .navbar {
+                    display: none;
+                    flex-direction: column;
+                    width: 100%;
+                    text-align: center;
+                    padding: 10px 0;
+                }
+                .navbar.active {
+                    display: flex;
+                }
+            }
             /* Hero Section */
             .hero {
                 background: linear-gradient(135deg, #007bff, #00aaff);
@@ -192,12 +214,17 @@
     </head>
     <body>
         <header>
-            <div class="container navbar">
-                <a href="#features">Features</a>
-                <a href="#getting-started">Getting Started</a>
-                <a href="#process">Process</a>
-                <a href="#limitations">Limitations</a>
-                <a href="#examples">Examples</a>
+            <div class="container">
+                <div class="menu-toggle" onclick="toggleMenu()">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <nav class="navbar">
+                    <a href="#features">Features</a>
+                    <a href="#getting-started">Getting Started</a>
+                    <a href="#process">Process</a>
+                    <a href="#limitations">Limitations</a>
+                    <a href="#examples">Examples</a>
+                </nav>
             </div>
         </header>
 
@@ -396,5 +423,12 @@ jobs:
                 </p>
             </div>
         </footer>
+
+        <script>
+            function toggleMenu() {
+                const navbar = document.querySelector(".navbar")
+                navbar.classList.toggle("active")
+            }
+        </script>
     </body>
 </html>
